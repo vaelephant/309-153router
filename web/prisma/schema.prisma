@@ -7,10 +7,12 @@ generator client {
 
 // ============================================================
 // 数据源配置（PostgreSQL）
-// 连接 URL 已迁移至 prisma.config.ts（Prisma 7）
+// 注意：Prisma 7+ 中，url 配置已迁移至 prisma.config.ts
+// schema.prisma 中只保留 provider 定义
 // ============================================================
 datasource db {
   provider = "postgresql"
+  // url 配置已移至 prisma.config.ts
 }
 
 // ============================================================
@@ -76,6 +78,13 @@ model User {
   transactions   Transaction[]
   balance        UserBalance?
   subscriptions  Subscription[]
+  loginLogs      UserLoginLog[]
+  behaviorLogs  UserBehaviorLog[]
+  // 邀请系统关系
+  inviteCodes              InviteCode[]
+  inviteRelationsAsInvitee InviteRelation[]     @relation("invite_relation_invitee_idTousers")
+  inviteRelationsAsInviter InviteRelation[]     @relation("invite_relation_inviter_idTousers")
+  inviteRewardRecords      InviteRewardRecord[]
 
   @@map("users")
 }
@@ -267,4 +276,134 @@ model Subscription {
 
   @@index([userId, status])
   @@map("subscriptions")
+}
+
+// ============================================================
+// 用户登录日志表
+// 功能：记录用户登录信息（IP、User-Agent、时间）
+// ============================================================
+model UserLoginLog {
+  id        BigInt   @id @default(autoincrement()) @db.BigInt
+  userId    String   @db.Uuid @map("user_id")
+  email     String   @db.VarChar(255)
+  loginAt   DateTime @map("login_at")
+  ipAddress String?  @map("ip_address") @db.Text
+  userAgent String?  @map("user_agent") @db.Text
+
+  // 关联
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_login_logs")
+  @@index([userId])
+  @@index([email])
+  @@index([loginAt])
+}
+
+// ============================================================
+// 用户行为日志表
+// 功能：记录用户功能使用时长等行为数据
+// ============================================================
+model UserBehaviorLog {
+  id              BigInt    @id @default(autoincrement()) @db.BigInt
+  userId          String    @db.Uuid @map("user_id")
+  email           String    @db.VarChar(255)
+  functionName    String    @map("function_name") @db.Text
+  startTime       DateTime  @map("start_time")
+  endTime         DateTime? @map("end_time")
+  durationSeconds Float?    @map("duration_seconds")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // 关联
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_behavior_logs")
+  @@index([userId])
+  @@index([email])
+  @@index([functionName])
+  @@index([startTime])
+}
+
+// ============================================================
+// 邀请系统相关表
+// ============================================================
+
+// 邀请码表
+model InviteCode {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(32)
+  userId    String   @map("user_id") @db.Uuid
+  maxUses   Int      @default(1) @map("max_uses")
+  usedCount Int      @default(0) @map("used_count")
+  expiresAt String?  @map("expires_at")
+  createdAt String?  @map("created_at")
+
+  // 关系
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("invite_code")
+  @@index([code])
+  @@index([userId])
+}
+
+// 邀请关系表
+model InviteRelation {
+  id         Int      @id @default(autoincrement())
+  inviterId  String   @map("inviter_id") @db.Uuid
+  inviteeId  String   @map("invitee_id") @db.Uuid
+  inviteCode String   @map("invite_code") @db.VarChar(32)
+  usedAt     String?  @map("used_at")
+
+  // 关系
+  inviter    User     @relation("invite_relation_inviter_idTousers", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee    User     @relation("invite_relation_invitee_idTousers", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@map("invite_relation")
+  @@index([inviterId])
+  @@index([inviteeId])
+  @@index([inviteCode])
+}
+
+// 邀请奖励规则表
+model InviteRewardRule {
+  id                  Int                  @id @default(autoincrement())
+  inviteCount         Int                  @unique @map("invite_count")
+  rewardType          String               @map("reward_type") @db.VarChar(20)
+  rewardValue         Int                  @map("reward_value")
+  rewardName          String               @map("reward_name")
+  rewardDescription   String?              @map("reward_description")
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           String?              @map("created_at")
+  updatedAt           String?              @map("updated_at")
+
+  // 关系
+  inviteRewardRecords InviteRewardRecord[]
+
+  @@map("invite_reward_rule")
+  @@index([inviteCount])
+  @@index([isActive])
+}
+
+// 用户邀请奖励记录表
+model InviteRewardRecord {
+  id          Int              @id @default(autoincrement())
+  userId      String           @map("user_id") @db.Uuid
+  ruleId      Int              @map("rule_id")
+  inviteCount Int              @map("invite_count")
+  rewardType  String           @map("reward_type") @db.VarChar(20)
+  rewardValue Int              @map("reward_value")
+  rewardName  String           @map("reward_name")
+  status      String           @default("pending") @db.VarChar(20)
+  grantedAt   String?          @map("granted_at")
+  expiresAt   String?          @map("expires_at")
+  createdAt   String?          @map("created_at")
+
+  // 关系
+  rewardRule  InviteRewardRule @relation(fields: [ruleId], references: [id])
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("invite_reward_record")
+  @@index([userId])
+  @@index([ruleId])
+  @@index([status])
+  @@index([createdAt])
 }
