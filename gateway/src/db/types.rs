@@ -50,13 +50,19 @@ pub struct ModelPricingInfo {
 pub struct BillArgs<'a> {
     pub user_id:       Uuid,
     pub api_key_id:    Uuid,
-    /// 模型 ID（写入 `usage_logs.model`）
+    /// 实际调用的模型（写入 usage_logs.model，用于计费与关联 model_pricing）
     pub model:         &'a str,
+    /// 用户请求的模型（与 model 不同时表示发生了 fallback）
+    pub requested_model: Option<&'a str>,
+    /// 实际调用的提供商（如 "openai" / "anthropic" / "google"）
+    pub provider:     Option<&'a str>,
+    /// 请求追踪 ID（可选）
+    pub request_id:   Option<&'a str>,
     pub input_tokens:  i32,
     pub output_tokens: i32,
     pub total_tokens:  i32,
-    /// 本次调用费用（`metrics::compute_cost` 计算得出）
+    /// 本次调用费用（按 actual model 单价计算）
     pub cost:          BigDecimal,
-    /// 端到端延迟，写入 `usage_logs.latency_ms`
+    /// 端到端延迟，写入 usage_logs.latency_ms
     pub latency_ms:    i32,
 }

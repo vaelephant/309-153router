@@ -41,6 +41,18 @@ pub enum ProviderType {
     Unknown,
 }
 
+impl ProviderType {
+    /// 用于写入 usage_logs.provider 等
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProviderType::OpenAI => "openai",
+            ProviderType::Anthropic => "anthropic",
+            ProviderType::Google => "google",
+            ProviderType::Unknown => "unknown",
+        }
+    }
+}
+
 // ─── 路由信息 ─────────────────────────────────────────────────────────────────
 
 /// 单个模型的完整路由信息

@@ -53,9 +53,14 @@ pub async fn chat_completions(
     let route = state.model_router.route(&request.model).await;
     info!(model = %request.model, provider = ?route.provider, stream = request.stream, "routing");
 
-    // 调用上游前先检查余额，避免无余额仍生成内容、事后计费失败
+    // 余额预检：要求 balance >= estimated_cost，避免透支（企业级）
+    let max_tokens = request.max_tokens.unwrap_or(4096) as i32;
+    let k = bigdecimal::BigDecimal::from(1000i32);
+    let estimated_output = bigdecimal::BigDecimal::from(max_tokens) / &k * &pricing.output_price;
+    let estimated_input  = bigdecimal::BigDecimal::from(500i32) / &k * &pricing.input_price; // 粗估 500 input
+    let estimated_cost  = estimated_input + estimated_output;
     let balance = db::get_user_balance(&state.db, meta.user_id).await?;
-    if balance <= bigdecimal::BigDecimal::from(0) {
+    if balance < estimated_cost {
         return Err(AppError::InsufficientBalance(
             "余额不足，请充值".to_string(),
         ));
@@ -72,9 +77,9 @@ pub async fn chat_completions(
 
 async fn handle_non_stream(
     state: RouterState, request: ChatCompletionRequest, route: RouteInfo,
-    meta: ApiKeyMeta, pricing: ModelPricingInfo, start: Instant,
+    meta: ApiKeyMeta, _pricing: ModelPricingInfo, start: Instant,
 ) -> AppResult<Response> {
-    let resp = call_with_fallback(&state, &request, &route, false).await?;
+    let (resp, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, false).await?;
     if !resp.status().is_success() {
         let status = resp.status();
         let body   = resp.text().await.unwrap_or_default();
@@ -86,11 +91,17 @@ async fn handle_non_stream(
     let mut chat_resp: ChatCompletionResponse = provider.convert_response(&request.model, &upstream_json);
 
     if let Some(ref usage) = chat_resp.usage {
-        let cost = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &pricing);
+        // 按实际调用的模型计费（OpenRouter 模式）
+        let pricing_actual = db::get_model_pricing(&state.db, &actual_model).await.ok().flatten()
+            .unwrap_or(_pricing);
+        let cost = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &pricing_actual);
         db::bill_in_tx(&state.db, BillArgs {
             user_id:       meta.user_id,
             api_key_id:    meta.api_key_id,
-            model:         &request.model,
+            model:         &actual_model,
+            requested_model: if actual_model != request.model { Some(request.model.as_str()) } else { None },
+            provider:     Some(actual_provider.as_str()),
+            request_id:   None,
             input_tokens:  usage.prompt_tokens as i32,
             output_tokens: usage.completion_tokens as i32,
             total_tokens:  usage.total_tokens as i32,
@@ -113,19 +124,23 @@ async fn handle_non_stream(
 
 async fn handle_stream(
     state: RouterState, request: ChatCompletionRequest, route: RouteInfo,
-    meta: ApiKeyMeta, pricing: ModelPricingInfo, start: Instant,
+    meta: ApiKeyMeta, _pricing: ModelPricingInfo, start: Instant,
 ) -> AppResult<Response> {
-    let upstream = call_with_fallback(&state, &request, &route, true).await?;
+    let (upstream, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, true).await?;
     if !upstream.status().is_success() {
         return Err(AppError::Upstream(format!("upstream stream error: {}", upstream.status())));
     }
+
+    // 按实际调用的模型取价（用于 trailer 与计费）
+    let pricing_actual = db::get_model_pricing(&state.db, &actual_model).await.ok().flatten()
+        .unwrap_or(_pricing);
 
     let (usage_tx, usage_rx) = tokio::sync::oneshot::channel::<Option<StreamUsage>>();
     let raw_stream = upstream.bytes_stream().map(|r: Result<bytes::Bytes, reqwest::Error>| {
         r.map(|b| b.to_vec()).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     });
     let start = start;
-    let pricing_for_trailer = pricing.clone();
+    let pricing_for_trailer = pricing_actual.clone();
     let trailer_fn: TrailerFn = Some(Box::new(move |u: StreamUsage| {
         let elapsed_ms = start.elapsed().as_millis();
         let cost = compute_cost(u.prompt_tokens, u.completion_tokens, &pricing_for_trailer);
@@ -137,20 +152,29 @@ async fn handle_stream(
     let body_stream = Body::from_stream(TextOnlyStream::new(Box::pin(raw_stream), usage_tx, trailer_fn));
 
     let db_clone   = state.db.clone();
-    let model_name = request.model.clone();
+    let model_name = actual_model.clone();
+    let requested  = request.model.clone();
+    let prov_str   = actual_provider.as_str().to_string();
     let user_id    = meta.user_id;
     let key_id     = meta.api_key_id;
+    let pricing_for_bill = pricing_actual;
 
     tokio::spawn(async move {
         match usage_rx.await {
             Ok(Some(usage)) => {
-                let cost = compute_cost(usage.prompt_tokens, usage.completion_tokens, &pricing);
+                let cost = compute_cost(usage.prompt_tokens, usage.completion_tokens, &pricing_for_bill);
                 if let Err(e) = db::bill_in_tx(&db_clone, BillArgs {
-                    user_id, api_key_id: key_id, model: &model_name,
+                    user_id,
+                    api_key_id: key_id,
+                    model: &model_name,
+                    requested_model: if model_name != requested { Some(requested.as_str()) } else { None },
+                    provider: Some(prov_str.as_str()),
+                    request_id: None,
                     input_tokens:  usage.prompt_tokens,
                     output_tokens: usage.completion_tokens,
                     total_tokens:  usage.prompt_tokens + usage.completion_tokens,
-                    cost, latency_ms: start.elapsed().as_millis() as i32,
+                    cost,
+                    latency_ms: start.elapsed().as_millis() as i32,
                 }).await {
                     error!(model = %model_name, err = %e, "stream billing failed");
                 }
@@ -171,10 +195,12 @@ async fn handle_stream(
 
 // ─── Provider 调用（含 Fallback）────────────────────────────────────────────
 
+/// 返回 (响应, 实际调用的模型, 实际调用的 Provider)。
+/// Fallback 时 actual_model 为备用模型，便于按实际模型计费与记录。
 async fn call_with_fallback(
     state: &RouterState, request: &ChatCompletionRequest,
     route: &RouteInfo, stream: bool,
-) -> AppResult<reqwest::Response> {
+) -> AppResult<(reqwest::Response, String, crate::router::ProviderType)> {
     let api_key  = state.config.api_key_for(&route.provider)
         .ok_or_else(|| AppError::Internal(format!("{:?} API key not configured", route.provider)))?;
     let provider = build_provider(&route.provider, api_key, &route.provider_url);
@@ -182,7 +208,9 @@ async fn call_with_fallback(
     let result = provider.call(&state.http_client, request, stream).await;
 
     let needs_fallback = match &result {
-        Ok(resp) if resp.status().is_success() => return result,
+        Ok(resp) if resp.status().is_success() => {
+            return result.map(|r| (r, route.model.clone(), route.provider.clone()));
+        }
         _ => has_fallback(route),
     };
 
@@ -196,10 +224,11 @@ async fn call_with_fallback(
         warn!(primary = %route.model, fallback = %fb_model, "retrying with fallback");
         let mut fb_req = request.clone();
         fb_req.model = fb_model.to_string();
-        build_provider(fb_ptype, fb_api_key, fb_url)
-            .call(&state.http_client, &fb_req, stream).await
+        let fb_resp = build_provider(fb_ptype, fb_api_key, fb_url)
+            .call(&state.http_client, &fb_req, stream).await?;
+        Ok((fb_resp, fb_model.to_string(), fb_ptype.clone()))
     } else {
-        result
+        result.map(|r| (r, route.model.clone(), route.provider.clone()))
     }
 }
 
