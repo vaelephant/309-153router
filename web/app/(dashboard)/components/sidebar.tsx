@@ -14,6 +14,7 @@ import {
   LogOut,
   Layers,
   Users,
+  Wallet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -34,6 +35,7 @@ const navItems = [
   { icon: Key, label: "API 密钥", id: "keys", href: "/keys" },
   { icon: Users, label: "邀请好友", id: "invite", href: "/invite" },
   { icon: BarChart3, label: "用量分析", id: "analytics", href: "/analytics" },
+  { icon: Wallet, label: "充值", id: "recharge", href: "/recharge" },
   { icon: CreditCard, label: "账单", id: "billing", href: "/billing" },
   { icon: BookOpen, label: "文档", id: "docs", href: "/docs" },
   { icon: Settings, label: "设置", id: "settings", href: "/settings" },
@@ -101,6 +103,7 @@ export function DashboardSidebar() {
     if (pathname === "/keys") return "keys"
     if (pathname.startsWith("/models")) return "models"
     if (pathname.startsWith("/analytics")) return "analytics"
+    if (pathname.startsWith("/recharge")) return "recharge"
     if (pathname.startsWith("/billing")) return "billing"
     if (pathname.startsWith("/docs")) return "docs"
     if (pathname.startsWith("/settings")) return "settings"
