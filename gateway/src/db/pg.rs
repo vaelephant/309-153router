@@ -109,44 +109,68 @@ pub async fn get_model_pricing(
 ///
 /// 所有步骤使用同一个 `Transaction`，任意一步失败则回滚，
 /// 确保 usage_logs / balance / transactions 三张表始终一致。
-pub async fn bill_in_tx(pool: &PgPool, args: BillArgs<'_>) -> AppResult<()> {
+pub async fn bill_in_tx(pool: &PgPool, args: BillArgs) -> AppResult<()> {
     let mut tx = pool
         .begin()
         .await
         .map_err(|e| AppError::Internal(format!("tx begin: {e}")))?;
 
-    // ── 1. 确保 user_balances 有该用户的行 ──────────────────────────────────
-    sqlx::query(
-        "INSERT INTO user_balances (user_id, balance) VALUES ($1, 0) \
-         ON CONFLICT (user_id) DO NOTHING",
-    )
-    .bind(args.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(format!("ensure balance row: {e}")))?;
-
-    // ── 2. 行级锁读余额 ──────────────────────────────────────────────────────
+    // ── 1. 原子扣费：一条 SQL 完成余额检查 + 扣减，无需 FOR UPDATE ──────────
+    // 如果余额不足（balance < cost），UPDATE 影响 0 行，返回 None
     #[derive(sqlx::FromRow)]
     struct BalRow { balance: BigDecimal }
 
-    let bal: BalRow = sqlx::query_as(
-        "SELECT balance FROM user_balances WHERE user_id = $1 FOR UPDATE",
+    let result: Option<BalRow> = sqlx::query_as(
+        "UPDATE user_balances \
+         SET balance = balance - $1, updated_at = NOW() \
+         WHERE user_id = $2 AND balance >= $1 \
+         RETURNING balance",
     )
+    .bind(&args.cost)
     .bind(args.user_id)
-    .fetch_one(&mut *tx)
+    .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| AppError::Internal(format!("read balance: {e}")))?;
+    .map_err(|e| AppError::Internal(format!("atomic deduct: {e}")))?;
 
-    // ── 3. 余额检查 ──────────────────────────────────────────────────────────
-    if bal.balance < args.cost {
-        let _ = tx.rollback().await;
-        return Err(AppError::InsufficientBalance(format!(
-            "balance {:.6} < cost {:.6}",
-            bal.balance, args.cost
-        )));
-    }
+    let new_balance = match result {
+        Some(r) => r.balance,
+        None => {
+            // 可能是新用户（行不存在）或余额不足，先确保行存在再判断
+            sqlx::query(
+                "INSERT INTO user_balances (user_id, balance) VALUES ($1, 0) \
+                 ON CONFLICT (user_id) DO NOTHING",
+            )
+            .bind(args.user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("ensure balance row: {e}")))?;
 
-    // ── 4. 写 usage_logs ─────────────────────────────────────────────────────
+            // 再试一次原子扣费
+            let r2: Option<BalRow> = sqlx::query_as(
+                "UPDATE user_balances \
+                 SET balance = balance - $1, updated_at = NOW() \
+                 WHERE user_id = $2 AND balance >= $1 \
+                 RETURNING balance",
+            )
+            .bind(&args.cost)
+            .bind(args.user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("atomic deduct retry: {e}")))?;
+
+            match r2 {
+                Some(r) => r.balance,
+                None => {
+                    let _ = tx.rollback().await;
+                    return Err(AppError::InsufficientBalance(
+                        format!("insufficient balance for cost {:.6}", args.cost)
+                    ));
+                }
+            }
+        }
+    };
+
+    // ── 2. 写 usage_logs ─────────────────────────────────────────────────────
     sqlx::query(
         "INSERT INTO usage_logs \
             (user_id, api_key_id, model, input_tokens, output_tokens, \
@@ -155,7 +179,7 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs<'_>) -> AppResult<()> {
     )
     .bind(args.user_id)
     .bind(args.api_key_id)
-    .bind(args.model)
+    .bind(&args.model)
     .bind(args.input_tokens)
     .bind(args.output_tokens)
     .bind(args.total_tokens)
@@ -165,19 +189,7 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs<'_>) -> AppResult<()> {
     .await
     .map_err(|e| AppError::Internal(format!("insert usage_log: {e}")))?;
 
-    // ── 5. 扣费 ──────────────────────────────────────────────────────────────
-    sqlx::query(
-        "UPDATE user_balances \
-         SET balance = balance - $1, updated_at = NOW() \
-         WHERE user_id = $2",
-    )
-    .bind(&args.cost)
-    .bind(args.user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(format!("deduct balance: {e}")))?;
-
-    // ── 6. 写财务流水（负值 = 支出） ────────────────────────────────────────
+    // ── 3. 写财务流水（负值 = 支出）─────────────────────────────────────────
     let neg_cost = -args.cost.clone();
     sqlx::query(
         "INSERT INTO transactions (user_id, amount, type, description) \
@@ -190,24 +202,20 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs<'_>) -> AppResult<()> {
     .await
     .map_err(|e| AppError::Internal(format!("insert transaction: {e}")))?;
 
-    // ── 7. 发 NOTIFY，供 Next.js SSE 推送给前端（余额准实时更新）────────────
-    // NOTIFY 在本事务 COMMIT 时才会真正发出；payload 为 JSON 字符串
-    let new_balance = &bal.balance - &args.cost;
-    let payload = format!(
-        r#"{{"user_id":"{}","balance":"{}"}}"#,
-        args.user_id,
-        new_balance
-    );
-    sqlx::query("SELECT pg_notify('user_balance_changed', $1)")
-        .bind(&payload)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("pg_notify: {e}")))?;
-
-    // ── 8. 提交 ──────────────────────────────────────────────────────────────
+    // ── 4. 提交 ──────────────────────────────────────────────────────────────
     tx.commit()
         .await
         .map_err(|e| AppError::Internal(format!("tx commit: {e}")))?;
+
+    // ── 5. pg_notify 移到事务外（避免锁住事务 3~4 秒）──────────────────────
+    let payload = format!(
+        r#"{{"user_id":"{}","balance":"{}"}}"#,
+        args.user_id, new_balance
+    );
+    let _ = sqlx::query("SELECT pg_notify('user_balance_changed', $1)")
+        .bind(&payload)
+        .execute(pool)
+        .await;  // 失败只记录，不影响主流程
 
     Ok(())
 }

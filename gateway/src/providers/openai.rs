@@ -90,6 +90,7 @@ fn parse_message(v: &Value) -> ChatMessage {
         },
         content: v.get("content").and_then(|c| c.as_str()).unwrap_or("").into(),
         name:    v.get("name").and_then(|n| n.as_str()).map(String::from),
+        ..Default::default()
     }
 }
 

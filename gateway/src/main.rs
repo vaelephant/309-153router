@@ -49,7 +49,11 @@ async fn main() {
 
     let db = sqlx::postgres::PgPoolOptions::new()
         .max_connections(20)
-        .acquire_timeout(std::time::Duration::from_secs(5))
+        .min_connections(2)                                              // 预热 2 条连接，避免冷启动慢
+        .acquire_timeout(std::time::Duration::from_secs(10))            // 拿连接最多等 10s
+        .max_lifetime(std::time::Duration::from_secs(1800))             // 连接最长存活 30 分钟，防止云端强踢
+        .idle_timeout(std::time::Duration::from_secs(300))              // 空闲 5 分钟自动关闭，主动释放
+        .test_before_acquire(true)                                       // 拿连接前 ping，丢弃坏连接（解决 EOF）
         .connect(&database_url)
         .await
         .unwrap_or_else(|e| {
@@ -85,6 +89,7 @@ async fn main() {
         .route("/v1/models/{model}/pricing",   get(api::models::get_model_pricing))
         .route("/v1/chat/completions",         post(api::chat::chat_completions))
         .route("/v1/usage",                    get(api::usage::get_usage_stats))
+        .route("/debug/echo",                  post(api::chat::debug_echo).get(api::chat::debug_echo))
         .with_state(state)
         .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http());

@@ -48,9 +48,33 @@ pub struct RouterState {
 
 impl RouterState {
     pub fn new(db: sqlx::PgPool, redis: redis::aio::ConnectionManager) -> Self {
-        let http_client = reqwest::Client::builder()
+        // 读取代理配置（来自 .env）
+        let proxy_enabled = std::env::var("PROXY_ENABLED")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
+        let proxy_url = std::env::var("PROXY_URL").ok();
+
+        let mut builder = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
-            .pool_max_idle_per_host(20)
+            .pool_max_idle_per_host(20);
+
+        if proxy_enabled {
+            if let Some(url) = &proxy_url {
+                match reqwest::Proxy::all(url) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                        tracing::info!("HTTP client proxy enabled: {}", url);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Invalid PROXY_URL '{}', proxy disabled: {}", url, e);
+                    }
+                }
+            } else {
+                tracing::warn!("PROXY_ENABLED=true but PROXY_URL is not set, proxy disabled");
+            }
+        }
+
+        let http_client = builder
             .build()
             .expect("failed to build reqwest client");
 

@@ -15,7 +15,8 @@
 //! - `GET  /v1/models/{m}/pricing`→ [`ModelPricingResponse`]
 //! - `GET  /v1/usage`             → [`UsageStatsResponse`]
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 // ─── 消息角色 ─────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ pub enum MessageRole {
     System,
     User,
     Assistant,
+    Tool,       // 工具调用结果
+    Function,   // 旧版 function calling
 }
 
 impl Default for MessageRole {
@@ -33,12 +36,44 @@ impl Default for MessageRole {
 
 // ─── 消息 ─────────────────────────────────────────────────────────────────────
 
+/// 兼容两种 content 格式：
+///   - 老格式（字符串）：`"content": "你好"`
+///   - 新格式（数组）：`"content": [{"type":"text","text":"你好"}]`
+/// 统一转成字符串，内部逻辑不需要改动。
+fn deserialize_content<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Value::deserialize(deserializer)?;
+    match v {
+        Value::String(s) => Ok(s),
+        Value::Array(parts) => {
+            let mut out = String::new();
+            for part in parts {
+                if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
+                    out.push_str(text);
+                }
+            }
+            Ok(out)
+        }
+        // 兜底：其它类型转成字符串，避免再报 422
+        other => Ok(other.to_string()),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChatMessage {
     pub role:    MessageRole,
+    #[serde(deserialize_with = "deserialize_content")]
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name:    Option<String>,
+    /// tool_calls 字段：接收但不转发（避免 422；转发前会被过滤）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Value>,
+    /// tool_call_id 字段：tool 角色消息携带
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 // ─── Chat Completions 请求 ────────────────────────────────────────────────────
@@ -67,6 +102,23 @@ pub struct ChatCompletionRequest {
     pub presence_penalty:  Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency_penalty: Option<f32>,
+}
+
+impl ChatCompletionRequest {
+    /// 过滤掉 OpenAI 不接受的消息：
+    /// - role=tool / role=function（工具返回消息）
+    /// - role=assistant 且带 tool_calls（工具调用请求）
+    /// 保留纯文本的 system / user / assistant 消息，确保转发不报 400。
+    pub fn strip_tool_messages(mut self) -> Self {
+        self.messages.retain(|m| {
+            match m.role {
+                MessageRole::Tool | MessageRole::Function => false,
+                MessageRole::Assistant if m.tool_calls.is_some() => false,
+                _ => true,
+            }
+        });
+        self
+    }
 }
 
 // ─── Chat Completions 响应 ────────────────────────────────────────────────────

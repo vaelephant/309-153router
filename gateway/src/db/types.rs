@@ -47,11 +47,11 @@ pub struct ModelPricingInfo {
 ///
 /// 由 handler 在拿到 Provider 响应的 usage 数据后构造，
 /// 传给 [`crate::db::pg::bill_in_tx`]。
-pub struct BillArgs<'a> {
+pub struct BillArgs {
     pub user_id:       Uuid,
     pub api_key_id:    Uuid,
     /// 模型 ID（写入 `usage_logs.model`）
-    pub model:         &'a str,
+    pub model:         String,
     pub input_tokens:  i32,
     pub output_tokens: i32,
     pub total_tokens:  i32,

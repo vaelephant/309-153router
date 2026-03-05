@@ -86,7 +86,7 @@ impl Provider for GoogleProvider {
             model:   model.into(),
             choices: vec![ChatChoice {
                 index: 0,
-                message: ChatMessage { role: MessageRole::Assistant, content, name: None },
+                message: ChatMessage { role: MessageRole::Assistant, content, name: None, ..Default::default() },
                 finish_reason: "stop".into(),
             }],
             usage,
