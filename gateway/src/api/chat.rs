@@ -13,9 +13,8 @@
 
 use std::time::Instant;
 
-use axum::{body::Body, extract::State, http::HeaderMap, response::Response, Json};
+use axum::{body::Body, extract::State, http::HeaderMap, http::StatusCode, response::Response, Json};
 use futures::StreamExt;
-use http::StatusCode;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -53,6 +52,14 @@ pub async fn chat_completions(
 
     let route = state.model_router.route(&request.model).await;
     info!(model = %request.model, provider = ?route.provider, stream = request.stream, "routing");
+
+    // 调用上游前先检查余额，避免无余额仍生成内容、事后计费失败
+    let balance = db::get_user_balance(&state.db, meta.user_id).await?;
+    if balance <= bigdecimal::BigDecimal::from(0) {
+        return Err(AppError::InsufficientBalance(
+            "余额不足，请充值".to_string(),
+        ));
+    }
 
     if request.stream {
         handle_stream(state, request, route, meta, pricing, start).await

@@ -18,7 +18,7 @@ pub mod redis;
 pub mod types;
 
 // ── Postgres 操作 re-export ──────────────────────────────────────────────────
-pub use pg::{bill_in_tx, get_model_pricing, validate_key_from_db};
+pub use pg::{bill_in_tx, get_model_pricing, get_user_balance, validate_key_from_db};
 
 // ── Redis 缓存 re-export ─────────────────────────────────────────────────────
 pub use redis::{cache_get_key_meta, cache_set_key_meta};

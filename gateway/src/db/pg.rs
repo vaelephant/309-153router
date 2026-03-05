@@ -92,9 +92,27 @@ pub async fn get_model_pricing(
     }))
 }
 
-// ─── 原子扣费事务 ─────────────────────────────────────────────────────────────
+// ─── 用户余额（调用前预检）────────────────────────────────────────────────────
 
-/// 在单个 Postgres 事务内完成完整的计费闭环。
+/// 查询用户当前余额（只读，不开启事务）。
+/// 若用户尚无 `user_balances` 记录则视为 0。
+/// 用于在发起上游请求前预检，避免无余额仍生成内容。
+pub async fn get_user_balance(pool: &PgPool, user_id: Uuid) -> AppResult<BigDecimal> {
+    #[derive(sqlx::FromRow)]
+    struct Row { balance: BigDecimal }
+
+    let row: Option<Row> = sqlx::query_as(
+        "SELECT balance FROM user_balances WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("db get_balance: {e}")))?;
+
+    Ok(row.map(|r| r.balance).unwrap_or_else(|| BigDecimal::from(0)))
+}
+
+// ─── 原子扣费事务 ─────────────────────────────────────────────────────────────
 ///
 /// ```text
 /// BEGIN
