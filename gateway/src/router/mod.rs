@@ -20,7 +20,15 @@ pub use registry::build_default_registry;
 
 use std::sync::Arc;
 
+use dashmap::DashMap;
+use governor::{Quota, RateLimiter};
+use std::num::NonZeroU32;
+use uuid::Uuid;
+
 use crate::config::AppConfig;
+
+/// 按 API Key 的限流器缓存：每个 key 一个 direct RateLimiter，quota 来自 DB 的 rate_limit_per_min
+type Limiter = governor::DefaultDirectRateLimiter;
 
 /// Axum 全局共享状态
 #[derive(Clone)]
@@ -44,20 +52,41 @@ pub struct RouterState {
 
     /// 全局配置（Provider API Key、缓存 TTL 等）
     pub config: Arc<AppConfig>,
+
+    /// 按 api_key_id 的限流器（每分钟请求数来自 api_keys.rate_limit_per_min）
+    pub limiters: Arc<DashMap<Uuid, Limiter>>,
 }
 
 impl RouterState {
     pub fn new(db: sqlx::PgPool, redis: redis::aio::ConnectionManager) -> Self {
+        let config = Arc::new(AppConfig::from_env());
+        let timeout_secs = config.providers.timeout_secs;
         let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
-            .pool_max_idle_per_host(20)
+            .timeout(std::time::Duration::from_secs(timeout_secs))
+            .pool_max_idle_per_host(config.providers.pool_max_idle)
             .build()
             .expect("failed to build reqwest client");
 
-        let config       = Arc::new(AppConfig::from_env());
         let routes       = build_default_registry();
         let model_router = ModelRouter::new(routes, config.providers.openai_base_url.clone());
 
-        Self { db, redis, http_client, model_router, config }
+        Self {
+            db,
+            redis,
+            http_client,
+            model_router,
+            config,
+            limiters: Arc::new(DashMap::new()),
+        }
+    }
+
+    /// 获取或创建该 API Key 的限流器，并检查是否允许通过。返回 Ok(()) 表示通过，Err 表示超限应返回 429。
+    pub fn check_rate_limit(&self, api_key_id: Uuid, rate_limit_per_min: i32) -> Result<(), ()> {
+        let n = rate_limit_per_min.max(1) as u32;
+        let quota = Quota::per_minute(NonZeroU32::new(n).unwrap_or(NonZeroU32::MIN));
+        let limiter = self.limiters
+            .entry(api_key_id)
+            .or_insert_with(|| RateLimiter::direct(quota));
+        limiter.check().map_err(|_| ())
     }
 }

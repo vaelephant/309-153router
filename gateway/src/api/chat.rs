@@ -39,6 +39,13 @@ pub async fn chat_completions(
 
     let meta = authenticate(&state, &headers).await?;
 
+    // 按 API Key 的每分钟请求数限流（来自 api_keys.rate_limit_per_min）
+    if state.check_rate_limit(meta.api_key_id, meta.rate_limit_per_min).is_err() {
+        return Err(AppError::RateLimited(
+            "Rate limit exceeded. Please retry after a moment.".into(),
+        ));
+    }
+
     if request.model.is_empty() {
         return Err(AppError::BadRequest("model is required".into()));
     }

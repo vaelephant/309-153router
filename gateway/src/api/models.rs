@@ -1,65 +1,46 @@
-//! GET /v1/models — 模型列表
-//! GET /v1/models/{model}/pricing — 模型定价
-//!
-//! TODO：生产环境应从 model_pricing 表动态读取，而不是硬编码静态列表。
+//! GET /v1/models — 模型列表（从 model_pricing 表读）
+//! GET /v1/models/{model}/pricing — 模型定价（从 model_pricing 表读，与计费一致）
 
-use axum::{extract::Path, Json};
+use axum::{extract::Path, extract::State, Json};
 
 use crate::{
+    db,
     error::AppResult,
     protocol::{ModelInfo, ModelListResponse, ModelPricingResponse},
+    router::RouterState,
 };
 
-pub async fn list_models() -> AppResult<Json<ModelListResponse>> {
-    let data = [
-        ("gpt-4o",                       "openai",    1715367049u32),
-        ("gpt-4o-mini",                  "openai",    1721172717),
-        ("gpt-4-turbo",                  "openai",    1704061447),
-        ("gpt-4",                        "openai",    1687882411),
-        ("gpt-3.5-turbo",                "openai",    1677610602),
-        ("claude-3-5-sonnet-20240620",   "anthropic", 1718841600),
-        ("claude-3-5-haiku-20241022",    "anthropic", 1729555200),
-        ("claude-3-opus-20240229",       "anthropic", 1709164800),
-        ("gemini-1.5-pro",               "google",    1712448000),
-        ("gemini-1.5-flash",             "google",    1715040000),
-    ];
-
-    let models = data.iter().map(|(id, owned_by, created)| ModelInfo {
-        id:       id.to_string(),
+pub async fn list_models(
+    State(state): State<RouterState>,
+) -> AppResult<Json<ModelListResponse>> {
+    let rows = db::list_enabled_models(&state.db).await?;
+    let data = rows.into_iter().map(|(model_name, provider, created_ts)| ModelInfo {
+        id:       model_name,
         object:   "model".into(),
-        created:  *created,
-        owned_by: owned_by.to_string(),
+        created:  created_ts as u32,
+        owned_by: provider,
     }).collect();
-
-    Ok(Json(ModelListResponse { object: "list".into(), data: models }))
+    Ok(Json(ModelListResponse { object: "list".into(), data }))
 }
 
 pub async fn get_model_pricing(
+    State(state): State<RouterState>,
     Path(model): Path<String>,
 ) -> AppResult<Json<ModelPricingResponse>> {
-    // TODO: 查 model_pricing 表（目前返回静态数据）
-    let pricing = [
-        ("gpt-4o",             5.0,    15.0,   "openai"),
-        ("gpt-4o-mini",        0.15,   0.6,    "openai"),
-        ("gpt-4-turbo",        10.0,   30.0,   "openai"),
-        ("gpt-4",              30.0,   60.0,   "openai"),
-        ("gpt-3.5-turbo",      0.5,    1.5,    "openai"),
-        ("claude-3-5-sonnet-20240620", 3.0, 15.0, "anthropic"),
-        ("claude-3-5-haiku-20241022",  0.8,  4.0,  "anthropic"),
-        ("claude-3-opus-20240229",     15.0, 75.0, "anthropic"),
-        ("gemini-1.5-pro",     3.5,   10.5,   "google"),
-        ("gemini-1.5-flash",   0.075,  0.3,   "google"),
-    ];
-
-    let found = pricing.iter().find(|(id, _, _, _)| *id == model.as_str());
-    let (input_cost, output_cost, provider) = found
-        .map(|(_, i, o, p)| (*i, *o, *p))
-        .unwrap_or((0.0, 0.0, "unknown"));
-
+    let Some((pricing, provider)) = db::get_model_pricing_with_provider(&state.db, &model).await? else {
+        return Ok(Json(ModelPricingResponse {
+            model_name: model,
+            input_cost: 0.0,
+            output_cost: 0.0,
+            provider: "unknown".into(),
+        }));
+    };
+    let input_cost: f64 = pricing.input_price.to_string().parse().unwrap_or(0.0);
+    let output_cost: f64 = pricing.output_price.to_string().parse().unwrap_or(0.0);
     Ok(Json(ModelPricingResponse {
         model_name: model,
         input_cost,
         output_cost,
-        provider: provider.into(),
+        provider,
     }))
 }

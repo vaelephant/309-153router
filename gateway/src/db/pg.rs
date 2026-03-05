@@ -92,6 +92,63 @@ pub async fn get_model_pricing(
     }))
 }
 
+/// 查询单个模型定价并返回 provider（供 GET /v1/models/:model/pricing 使用）。
+pub async fn get_model_pricing_with_provider(
+    pool:  &PgPool,
+    model: &str,
+) -> AppResult<Option<(ModelPricingInfo, String)>> {
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        input_price:  BigDecimal,
+        output_price: BigDecimal,
+        provider:     String,
+    }
+
+    let row: Option<Row> = sqlx::query_as(
+        "SELECT input_price, output_price, provider \
+         FROM model_pricing \
+         WHERE model_name = $1 AND enabled = true",
+    )
+    .bind(model)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("db get_pricing: {e}")))?;
+
+    Ok(row.map(|r| (
+        ModelPricingInfo {
+            input_price:  r.input_price,
+            output_price: r.output_price,
+        },
+        r.provider,
+    )))
+}
+
+/// 列出所有已启用的模型（供 GET /v1/models 使用）。
+pub async fn list_enabled_models(pool: &PgPool) -> AppResult<Vec<(String, String, i64)>> {
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        model_name: String,
+        provider:   String,
+        created_at: chrono::DateTime<chrono::Utc>,
+    }
+
+    let rows: Vec<Row> = sqlx::query_as(
+        "SELECT model_name, provider, created_at \
+         FROM model_pricing \
+         WHERE enabled = true \
+         ORDER BY model_name",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("db list_models: {e}")))?;
+
+    Ok(rows.into_iter().map(|r| (
+        r.model_name,
+        r.provider,
+        r.created_at.timestamp(),
+    )).collect())
+}
+
 // ─── 用户余额（调用前预检）────────────────────────────────────────────────────
 
 /// 查询用户当前余额（只读，不开启事务）。

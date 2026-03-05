@@ -25,6 +25,7 @@ license = "MIT"
 axum = { version = "0.7", features = ["macros", "ws"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
+dashmap = "5"
 
 # ============================================================
 # 异步运行时
