@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'OptRouter - \u7edf\u4e00 AI \u6a21\u578b API \u7f51\u5173',
-  description: '\u901a\u8fc7\u4e00\u4e2a\u63a5\u53e3\u8c03\u7528\u591a\u5bb6 AI \u6a21\u578b\uff0c\u7b80\u5316\u4f60\u7684 AI \u5f00\u53d1\u5de5\u4f5c\u6d41',
+  title: 'OptRouter - 统一 AI 模型接口平台',
+  description: '一个 API 接入全球顶尖 AI 模型，简化开发流程，降低接入成本',
   icons: {
     icon: [
       {
@@ -34,9 +42,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN">
-      <body className="font-sans antialiased">
-        {children}
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased`} style={{ fontFamily: 'var(--font-family-sans), var(--font-family-cn)' }}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
+        >
+          {children}
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

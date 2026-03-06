@@ -1,17 +1,31 @@
-"use client"
+import { Navbar } from "./(home)/components/navbar"
+import { Hero } from "./(home)/components/hero"
+import { Stats } from "./(home)/components/stats"
+import { Features } from "./(home)/components/features"
+import { Models } from "./(home)/components/models"
+import { CodeExample } from "./(home)/components/code-example"
+import { Pricing } from "./(home)/components/pricing"
+import { CTA } from "./(home)/components/cta"
+import { Footer } from "./(home)/components/footer"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-
-export default function RootPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // 按产品预期：启动默认进入登录/注册页，登录成功后再进入控制台
-    router.replace("/login")
-  }, [router])
-
-  // 避免闪烁
-  return null
+export default function Home() {
+  return (
+    <main 
+      className="min-h-screen"
+      style={{
+        backgroundColor: 'var(--color-bg-page)',
+      }}
+    >
+      <Navbar />
+      <Hero />
+      <Stats />
+      <Features />
+      <Models />
+      <CodeExample />
+      <Pricing />
+      <CTA />
+      <Footer />
+    </main>
+  )
 }
 

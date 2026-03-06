@@ -4,8 +4,72 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =========================
+   Dr.Seek Design Tokens v1.1
+   Light + Dark Theme
+   ========================= */
+
 :root {
-  /* 白黑灰配色方案 */
+  /* ---------- Design Tokens: Colors ---------- */
+  --color-bg-page: #f6f6f7;
+  --color-bg-surface: #ffffff;
+  --color-bg-muted: #f3f3f4;
+  --color-text-primary: #0a0a0a;
+  --color-text-secondary: #333333;
+  --color-text-body: #666666;
+  --color-text-muted: #9a9a9a;
+  --color-border-default: #e6e6e6;
+  --color-border-subtle: #efefef;
+  --color-accent-primary: #7c7cff;
+  --color-accent-hover: #6b6bff;
+  --color-accent-soft: #f1f1ff;
+  --color-button-primary-bg: #000000;
+  --color-button-primary-hover: #222222;
+  --color-button-primary-text: #ffffff;
+  --color-button-secondary-bg: transparent;
+  --color-button-secondary-text: #0a0a0a;
+  --color-button-secondary-border: #111111;
+  --color-focus-ring: rgba(124, 124, 255, 0.35);
+  
+  /* ---------- Design Tokens: Typography ---------- */
+  --font-family-sans: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-family-cn: "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  
+  /* ---------- Design Tokens: Spacing (8px scale) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 80px;
+  
+  /* ---------- Design Tokens: Radius ---------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+  
+  /* ---------- Design Tokens: Shadows ---------- */
+  --shadow-soft: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 6px 18px rgba(0,0,0,0.08);
+  
+  /* ---------- Design Tokens: Motion ---------- */
+  --motion-fast: 0.15s;
+  --motion-base: 0.25s;
+  --motion-slow: 0.4s;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ---------- Design Tokens: Layout ---------- */
+  --layout-max-width: 1200px;
+  --layout-padding-x: 24px;
+  --layout-section-spacing: 80px;
+  --layout-section-spacing-mobile: 48px;
+
+  /* 白黑灰配色方案 (保持兼容性) */
   --background: oklch(1 0 0);              /* 白色背景 */
   --foreground: oklch(0.1 0 0);           /* 黑色文字 */
   --card: oklch(0.98 0 0);                 /* 浅灰卡片 */
@@ -90,11 +154,91 @@
   --color-warning-foreground: var(--warning-foreground);
 }
 
+/* Dark theme via class strategy */
+:root.dark {
+  --color-bg-page: #070a10;
+  --color-bg-surface: #0b1020;
+  --color-bg-muted: #0f172a;
+  --color-text-primary: rgba(255,255,255,0.92);
+  --color-text-secondary: rgba(255,255,255,0.78);
+  --color-text-body: rgba(255,255,255,0.65);
+  --color-text-muted: rgba(255,255,255,0.45);
+  --color-border-default: rgba(255,255,255,0.12);
+  --color-border-subtle: rgba(255,255,255,0.08);
+  --color-accent-primary: #7c7cff;
+  --color-accent-hover: #9a92ff;
+  --color-accent-soft: rgba(124,124,255,0.14);
+  --color-button-primary-bg: #ffffff;
+  --color-button-primary-hover: rgba(255,255,255,0.90);
+  --color-button-primary-text: #0a0a0a;
+  --color-button-secondary-bg: transparent;
+  --color-button-secondary-text: rgba(255,255,255,0.92);
+  --color-button-secondary-border: rgba(255,255,255,0.22);
+  --color-focus-ring: rgba(124, 124, 255, 0.45);
+  --shadow-soft: 0 2px 12px rgba(0,0,0,0.45);
+  --shadow-card-hover: 0 10px 28px rgba(0,0,0,0.50);
+}
+
+/* Base body usage */
+html, body {
+  font-family: var(--font-family-sans), var(--font-family-cn);
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes using tokens */
+.ds-card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  transition: transform var(--motion-base) var(--ease-standard),
+              border-color var(--motion-base) var(--ease-standard),
+              box-shadow var(--motion-base) var(--ease-standard);
+}
+.ds-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+  border-color: #d0d0d0;
+}
+
+.ds-btn-primary {
+  background: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
+  border-radius: var(--radius-pill);
+  padding: 14px 28px;
+  font-weight: 600;
+  transition: background var(--motion-base) var(--ease-standard),
+              transform var(--motion-base) var(--ease-standard);
+  border: none;
+  cursor: pointer;
+}
+.ds-btn-primary:hover { 
+  background: var(--color-button-primary-hover); 
+}
+.ds-btn-primary:active { 
+  transform: scale(0.99); 
+}
+.ds-btn-primary:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Responsive spacing adjustments */
+@media (max-width: 768px) {
+  :root {
+    --layout-section-spacing: var(--layout-section-spacing-mobile);
+    --layout-padding-x: 16px;
   }
 }
