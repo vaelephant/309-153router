@@ -1,95 +1,104 @@
-//! 静态模型注册表（MVP）
+//! 模型注册表（配置文件驱动）
 //!
-//! 在服务启动时构建 `model → RouteInfo` 的映射，传给 [`ModelRouter`]。
+//! 启动时从 TOML 配置文件加载 `model → RouteInfo` 映射，**必须**提供有效配置，无内置默认模型列表。
 //!
-//! # MVP vs 企业级
+//! # 配置文件
 //!
-//! | 阶段 | 数据来源 | 更新方式 |
-//! |------|----------|---------|
-//! | MVP  | 代码中硬编码（本文件）| 重启服务 |
-//! | 企业级 | Postgres `model_pricing` 表 | 定时拉取 / 管理员 API 触发热更新 |
-//!
-//! 后续迁移到数据库驱动时，只需修改 `build_default_registry()` 的实现，
-//! 将 SQL 查询结果填充到 HashMap 中即可，调用方（`router/mod.rs`）无需变动。
+//! - 路径：环境变量 `REGISTRY_CONFIG`，或默认 `config/models.toml`（相对当前工作目录）
+//! - 格式：TOML，`[[models]]` 数组，每项含 `model`、`provider`、`provider_url`，可选 `fallback_*`
+//! - 修改后重启 Gateway 即可生效，无需重新编译。
 //!
 //! # 预留接口：policy.rs（TODO）
 //!
-//! 企业级功能（用户级别 allowlist、A/B 路由、地区路由）可以在 `router/policy.rs`
-//! 中实现，`ModelRouter` 在 `route()` 前先查询 policy 层。
+//! 用户级别 allowlist、A/B 路由等可在 `router/policy.rs` 实现。
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use super::model_router::{ProviderType, RouteInfo};
 
-/// 构建默认模型注册表。
-///
-/// 返回的 HashMap 传给 `ModelRouter::new()`，之后通过 `RwLock` 保护，
-/// 允许运行时追加或修改条目。
-pub fn build_default_registry() -> HashMap<String, RouteInfo> {
+/// 配置文件根结构
+#[derive(serde::Deserialize)]
+struct ModelsConfig {
+    models: Vec<ModelEntry>,
+}
+
+#[derive(serde::Deserialize)]
+struct ModelEntry {
+    model:         String,
+    provider:      String,
+    provider_url:  String,
+    #[serde(default)]
+    fallback_model:        Option<String>,
+    #[serde(default)]
+    fallback_provider_url: Option<String>,
+    #[serde(default)]
+    fallback_provider:     Option<String>,
+}
+
+fn parse_provider(s: &str) -> Option<ProviderType> {
+    match s.trim().to_lowercase().as_str() {
+        "openai"    => Some(ProviderType::OpenAI),
+        "anthropic"  => Some(ProviderType::Anthropic),
+        "google"    => Some(ProviderType::Google),
+        "together"  => Some(ProviderType::Together),
+        "ollama"    => Some(ProviderType::Ollama),
+        _           => None,
+    }
+}
+
+/// 从 TOML 配置文件加载模型注册表。
+pub fn load_registry_from_path(path: &str) -> Result<HashMap<String, RouteInfo>, String> {
+    let path = Path::new(path);
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| format!("read registry config {}: {}", path.display(), e))?;
+
+    let config: ModelsConfig = toml::from_str(&content)
+        .map_err(|e| format!("parse registry config {}: {}", path.display(), e))?;
+
     let mut map = HashMap::new();
+    for entry in config.models {
+        let provider = parse_provider(&entry.provider)
+            .ok_or_else(|| format!("unknown provider '{}' for model '{}'", entry.provider, entry.model))?;
 
-    // ── OpenAI 模型 ──────────────────────────────────────────────────────────
-    for model in [
-        "gpt-4o",
-        "gpt-4o-mini",
-        "gpt-4-turbo",
-        "gpt-4",
-        "gpt-3.5-turbo",
-        "o1-preview",
-        "o1-mini",
-    ] {
-        map.insert(model.to_string(), RouteInfo {
-            model:                model.to_string(),
-            provider_url:         "https://api.openai.com/v1".into(),
-            provider:             ProviderType::OpenAI,
-            fallback_model:       None,
-            fallback_provider_url: None,
-            fallback_provider:    None,
-        });
+        let fallback_provider = entry
+            .fallback_provider
+            .as_ref()
+            .and_then(|s| parse_provider(s));
+
+        let (fallback_model, fallback_provider_url, fallback_provider) = match (
+            entry.fallback_model,
+            entry.fallback_provider_url,
+            fallback_provider,
+        ) {
+            (Some(m), Some(u), Some(p)) => (Some(m), Some(u), Some(p)),
+            (None, None, None) => (None, None, None),
+            _ => {
+                return Err(format!(
+                    "model '{}': fallback 需同时配置 fallback_model、fallback_provider_url、fallback_provider",
+                    entry.model
+                ));
+            }
+        };
+
+        let route = RouteInfo {
+            model:                entry.model.clone(),
+            provider_url:        entry.provider_url,
+            provider,
+            fallback_model,
+            fallback_provider_url,
+            fallback_provider,
+        };
+        map.insert(entry.model, route);
     }
 
-    // ── Anthropic Claude 模型 ────────────────────────────────────────────────
-    for model in [
-        "claude-3-5-sonnet-20240620",
-        "claude-3-5-haiku-20241022",
-        "claude-3-opus-20240229",
-        "claude-3-sonnet-20240229",
-        "claude-3-haiku-20240307",
-    ] {
-        map.insert(model.to_string(), RouteInfo {
-            model:                model.to_string(),
-            provider_url:         "https://api.anthropic.com".into(),
-            provider:             ProviderType::Anthropic,
-            fallback_model:       None,
-            fallback_provider_url: None,
-            fallback_provider:    None,
-        });
-    }
+    Ok(map)
+}
 
-    // ── Google Gemini 模型 ───────────────────────────────────────────────────
-    for model in [
-        "gemini-1.5-pro",
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-pro",
-    ] {
-        map.insert(model.to_string(), RouteInfo {
-            model:                model.to_string(),
-            provider_url:         "https://generativelanguage.googleapis.com/v1beta".into(),
-            provider:             ProviderType::Google,
-            fallback_model:       None,
-            fallback_provider_url: None,
-            fallback_provider:    None,
-        });
-    }
-
-    // ── 示例 fallback 配置：gpt-4 失败时降级到 gpt-4o-mini ──────────────────
-    // 生产环境建议从数据库加载 fallback 策略，而不是硬编码
-    if let Some(route) = map.get_mut("gpt-4") {
-        route.fallback_model        = Some("gpt-4o-mini".into());
-        route.fallback_provider_url = Some("https://api.openai.com/v1".into());
-        route.fallback_provider     = Some(ProviderType::OpenAI);
-    }
-
-    map
+/// 加载注册表：从配置文件读取，失败则返回错误（无内置默认，需提供 config/models.toml 或设置 REGISTRY_CONFIG）。
+pub fn load_registry() -> Result<HashMap<String, RouteInfo>, String> {
+    let path = std::env::var("REGISTRY_CONFIG").unwrap_or_else(|_| "config/models.toml".into());
+    let routes = load_registry_from_path(&path)?;
+    tracing::info!("Loaded {} models from {}", routes.len(), path);
+    Ok(routes)
 }

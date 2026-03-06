@@ -5,4 +5,4 @@
 
 pub mod stream_proxy;
 
-pub use stream_proxy::{AccountingStream, StreamUsage, TextOnlyStream, TrailerFn};
+pub use stream_proxy::{AccountingStream, StreamUsage};

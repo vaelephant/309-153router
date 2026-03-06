@@ -24,6 +24,14 @@ pub struct ProviderConfig {
     pub google_api_key:  Option<String>,
     pub google_base_url: String,
 
+    // ── Together AI（OpenAI 兼容）────────────────────────────────────────────
+    pub together_api_key:  Option<String>,
+    pub together_base_url: String,
+
+    // ── Ollama（OpenAI 兼容，本地通常无需 Key）────────────────────────────────
+    pub ollama_api_key:  Option<String>,
+    pub ollama_base_url: String,
+
     // ── 网络参数 ─────────────────────────────────────────────────────────────
     /// 上游请求超时（秒），默认 120s（大模型生成慢）
     pub timeout_secs: u64,
@@ -46,6 +54,14 @@ impl ProviderConfig {
             google_api_key:   std::env::var("GOOGLE_API_KEY").ok(),
             google_base_url:  std::env::var("GOOGLE_BASE_URL")
                 .unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta".into()),
+
+            together_api_key: std::env::var("TOGETHER_API_KEY").ok(),
+            together_base_url: std::env::var("TOGETHER_BASE_URL")
+                .unwrap_or_else(|_| "https://api.together.xyz/v1".into()),
+
+            ollama_api_key: std::env::var("OLLAMA_API_KEY").ok(),
+            ollama_base_url: std::env::var("OLLAMA_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:11434/v1".into()),
 
             timeout_secs: std::env::var("PROVIDER_TIMEOUT_SECS")
                 .ok()

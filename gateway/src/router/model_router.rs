@@ -37,6 +37,10 @@ pub enum ProviderType {
     Anthropic,
     /// Google Gemini
     Google,
+    /// Together AI（OpenAI 兼容）
+    Together,
+    /// Ollama 本地/自托管（OpenAI 兼容，通常无需 API Key）
+    Ollama,
     /// 路由表中未找到的模型（fallback 到默认 Provider）
     Unknown,
 }
@@ -48,6 +52,8 @@ impl ProviderType {
             ProviderType::OpenAI => "openai",
             ProviderType::Anthropic => "anthropic",
             ProviderType::Google => "google",
+            ProviderType::Together => "together",
+            ProviderType::Ollama => "ollama",
             ProviderType::Unknown => "unknown",
         }
     }
@@ -121,8 +127,7 @@ impl ModelRouter {
         }
     }
 
-    /// 列出所有已注册的模型 ID（供 GET /v1/models 使用）
-    #[allow(dead_code)]
+    /// 列出所有已注册的模型 ID（供启动时打印、GET /v1/models 等使用）
     pub async fn list_models(&self) -> Vec<String> {
         let mut models: Vec<String> = self.routes.read().await.keys().cloned().collect();
         models.sort();

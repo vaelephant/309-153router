@@ -1,4 +1,4 @@
-//! OpenRouter Gateway — 库入口
+//! OptRouter Gateway — 库入口
 //!
 //! # 模块结构
 //!

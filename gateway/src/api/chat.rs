@@ -25,7 +25,7 @@ use crate::{
     protocol::{ChatCompletionRequest, ChatCompletionResponse},
     providers::build_provider,
     proxy::{AccountingStream, StreamUsage},
-    router::{RouteInfo, RouterState},
+    router::{ProviderType, RouteInfo, RouterState},
 };
 
 // ─── 公开 Handler ─────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ async fn handle_non_stream(
     let mut cost_yuan_header  = String::new();
 
     if let Some(ref usage) = chat_resp.usage {
-        // 按实际调用的模型计费（OpenRouter 模式）
+        // 按实际调用的模型计费（OptRouter 模式）
         let pricing_actual = db::get_model_pricing(&state.db, &actual_model).await.ok().flatten()
             .unwrap_or(_pricing);
         let cost    = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &pricing_actual);
@@ -257,7 +257,16 @@ async fn call_with_fallback(
     state: &RouterState, request: &ChatCompletionRequest,
     route: &RouteInfo, stream: bool,
 ) -> AppResult<(reqwest::Response, String, crate::router::ProviderType)> {
-    let api_key  = state.config.api_key_for(&route.provider)
+    let api_key = state
+        .config
+        .api_key_for(&route.provider)
+        .or_else(|| {
+            if route.provider == ProviderType::Ollama {
+                Some("")
+            } else {
+                None
+            }
+        })
         .ok_or_else(|| AppError::Internal(format!("{:?} API key not configured", route.provider)))?;
     let provider = build_provider(&route.provider, api_key, &route.provider_url);
 
@@ -274,7 +283,10 @@ async fn call_with_fallback(
         let fb_model   = route.fallback_model.as_deref().unwrap();
         let fb_url     = route.fallback_provider_url.as_deref().unwrap();
         let fb_ptype   = route.fallback_provider.as_ref().unwrap();
-        let fb_api_key = state.config.api_key_for(fb_ptype)
+        let fb_api_key = state
+            .config
+            .api_key_for(fb_ptype)
+            .or_else(|| if *fb_ptype == ProviderType::Ollama { Some("") } else { None })
             .ok_or_else(|| AppError::Internal(format!("{fb_ptype:?} fallback API key not configured")))?;
 
         warn!(primary = %route.model, fallback = %fb_model, "retrying with fallback");

@@ -52,6 +52,8 @@ impl AppConfig {
             }
             ProviderType::Anthropic => self.providers.anthropic_api_key.as_deref(),
             ProviderType::Google    => self.providers.google_api_key.as_deref(),
+            ProviderType::Together => self.providers.together_api_key.as_deref(),
+            ProviderType::Ollama => self.providers.ollama_api_key.as_deref(),
         }
     }
 
@@ -62,6 +64,8 @@ impl AppConfig {
             ProviderType::OpenAI | ProviderType::Unknown => &self.providers.openai_base_url,
             ProviderType::Anthropic => &self.providers.anthropic_base_url,
             ProviderType::Google    => &self.providers.google_base_url,
+            ProviderType::Together => &self.providers.together_base_url,
+            ProviderType::Ollama => &self.providers.ollama_base_url,
         }
     }
 }

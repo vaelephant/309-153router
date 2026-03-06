@@ -183,9 +183,9 @@ async function createStreamingResponse(
 export async function GET() {
   return NextResponse.json({
     object: 'service',
-    id: 'openrouter-chat',
+    id: 'OptRouter-chat',
     created: Math.floor(Date.now() / 1000),
-    instructions: 'OpenRouter API - Unified AI Gateway',
+    instructions: 'OptRouter API - Unified AI Gateway',
     models: 'GET /api/models',
   })
 }

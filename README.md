@@ -1,4 +1,4 @@
-# OpenRouter - AI 模型统一网关
+# OptRouter - AI 模型统一网关
 
 一个统一的大模型 API 网关，支持通过单一接口调用多家 AI 模型。
 
@@ -120,7 +120,7 @@ curl -X POST http://localhost:3000/api/chat \
 
 ### web/.env
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/openrouter
+DATABASE_URL=postgresql://user:password@localhost:5432/OptRouter
 GATEWAY_URL=http://localhost:3001
 ```
 
