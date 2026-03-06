@@ -5,8 +5,8 @@
 # ============================================================
 
 [package]
-# 项目名称
-name = "openrouter-gateway"
+# 项目名称（Rust crate 需 snake_case）
+name = "opt_router_gateway"
 # 版本号
 version = "0.1.0"
 # Rust 版本要求
@@ -14,7 +14,7 @@ edition = "2021"
 # 项目描述
 description = "AI Model Gateway - Unified API for multiple LLM providers"
 # 作者信息
-authors = ["OpenRouter Team"]
+authors = ["OptRouter Team"]
 # 许可证
 license = "MIT"
 
@@ -44,6 +44,7 @@ bytes = "1"
 # ── 序列化 / 反序列化 ─────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+toml = "0.8"
 
 # ── 数据库（sqlx 直连 Postgres，事务扣费）─────────────────
 # runtime-tokio-rustls：异步 + TLS

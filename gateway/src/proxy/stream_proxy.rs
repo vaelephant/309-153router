@@ -154,9 +154,11 @@ impl Stream for AccountingStream {
 // ─── TextOnlyStream（format=text 纯文字流）──────────────────────────────────────
 
 /// 流结束时可选的「尾行」生成器：传入 usage，返回要追加的一行文字（如生成时间、token 计费）。
+#[allow(dead_code)]
 pub type TrailerFn = Option<Box<dyn FnOnce(StreamUsage) -> String + Send>>;
 
 /// 解析上游 SSE，只输出 `choices[0].delta.content`；仍截取 usage 计费；可选追加尾行（生成时间、token 计费）。
+#[allow(dead_code)]
 pub struct TextOnlyStream {
     inner:         Pin<Box<dyn Stream<Item = Result<Vec<u8>, std::io::Error>> + Send>>,
     usage_tx:      Option<tokio::sync::oneshot::Sender<Option<StreamUsage>>>,
@@ -167,6 +169,7 @@ pub struct TextOnlyStream {
     trailer_fn:    TrailerFn,
 }
 
+#[allow(dead_code)]
 impl TextOnlyStream {
     pub fn new(
         inner:      Pin<Box<dyn Stream<Item = Result<Vec<u8>, std::io::Error>> + Send>>,
@@ -272,6 +275,7 @@ impl TextOnlyStream {
     }
 }
 
+#[allow(dead_code)]
 impl Stream for TextOnlyStream {
     type Item = Result<Vec<u8>, std::io::Error>;
 

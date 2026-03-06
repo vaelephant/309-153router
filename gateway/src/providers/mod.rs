@@ -1,12 +1,13 @@
 //! AI Provider 抽象层
 //!
-//! 每个 Provider 实现 [`Provider`] trait，handler 只依赖这个 trait。
+//! 每个模型供应商一个独立文件（如 `openai.rs`、`together.rs`、`ollama.rs`），
+//! 实现 [`Provider`] trait，handler 只依赖该 trait，便于查找与维护。
 //!
-//! # 添加新 Provider（3 步）
+//! # 添加新供应商
 //!
-//! 1. 新建 `providers/your_provider.rs`，实现 `Provider` trait
-//! 2. 在 `build_provider()` 里增加一个 match 分支
-//! 3. 在 `router/registry.rs` 的路由表里登记对应模型
+//! 1. 新建 `providers/xxx.rs`，实现 `Provider`（可复用 `OpenAIProvider` 逻辑的用包装即可）
+//! 2. 本文件 `pub mod xxx`，并在 `build_provider()` 增加对应分支
+//! 3. `router/model_router.rs` 增加 `ProviderType`，`config` 与 `registry` 登记模型
 
 use async_trait::async_trait;
 use serde_json::Value;
@@ -19,7 +20,9 @@ use crate::{
 
 pub mod anthropic;
 pub mod google;
+pub mod ollama;
 pub mod openai;
+pub mod together;
 
 // ─── Provider Trait ───────────────────────────────────────────────────────────
 
@@ -53,6 +56,12 @@ pub fn build_provider(
         }
         ProviderType::Google => {
             Box::new(google::GoogleProvider::new(api_key))
+        }
+        ProviderType::Together => {
+            Box::new(together::TogetherProvider::new(api_key, provider_url))
+        }
+        ProviderType::Ollama => {
+            Box::new(ollama::OllamaProvider::new(api_key, provider_url))
         }
         ProviderType::OpenAI | ProviderType::Unknown => {
             Box::new(openai::OpenAIProvider::new(api_key, provider_url))

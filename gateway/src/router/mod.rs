@@ -5,7 +5,7 @@
 //! | 模块 | 职责 |
 //! |------|------|
 //! | [`model_router`] | `ProviderType`、`RouteInfo`、`ModelRouter`（路由决策）|
-//! | [`registry`]     | 静态模型注册表（MVP 硬编码，后续改为 DB 驱动）|
+//! | [`registry`]     | 从配置文件加载模型注册表（config/models.toml）|
 //!
 //! # RouterState
 //!
@@ -16,7 +16,7 @@ pub mod model_router;
 pub mod registry;
 
 pub use model_router::{ModelRouter, ProviderType, RouteInfo};
-pub use registry::build_default_registry;
+pub use registry::load_registry;
 
 use std::sync::Arc;
 
@@ -91,7 +91,10 @@ impl RouterState {
             .build()
             .expect("failed to build reqwest client");
 
-        let routes       = build_default_registry();
+        let routes = load_registry().unwrap_or_else(|e| {
+            tracing::error!("Registry config failed: {e}. Set REGISTRY_CONFIG or add config/models.toml");
+            std::process::exit(1);
+        });
         let model_router = ModelRouter::new(routes, config.providers.openai_base_url.clone());
 
         Self {

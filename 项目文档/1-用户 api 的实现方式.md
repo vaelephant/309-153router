@@ -1,6 +1,6 @@
 
 
-给用户提供一个 可直接调用的 API（类似 OpenAI / OpenRouter）
+给用户提供一个 可直接调用的 API（类似 OpenAI / OptRouter）
 
 这个 API 的设计与实现方式，会直接影响：
 
@@ -29,7 +29,7 @@ POST /v1/models
 ✅ 用 LangChain / LlamaIndex
 ✅ 用 OpenAI 客户端
 
-👉 OpenRouter、Together.ai、Groq 都这样做。
+👉 OptRouter、Together.ai、Groq 都这样做。
 
 ⸻
 

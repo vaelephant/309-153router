@@ -1,6 +1,6 @@
 //! OpenAI Provider
 //!
-//! 同时支持所有 OpenAI 兼容接口（Together AI、Groq、Anyscale 等）。
+//! 其他 OpenAI 兼容供应商（如 Together、Groq）各在独立文件中实现或包装本逻辑。
 //!
 //! # 流式 usage 获取
 //! 请求加 `stream_options.include_usage = true` 后，OpenAI 在 `[DONE]` 前

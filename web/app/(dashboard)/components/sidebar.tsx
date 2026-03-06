@@ -130,7 +130,7 @@ export function DashboardSidebar() {
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">
-              OpenRouter
+              OptRouter
             </span>
           )}
         </div>

@@ -34,7 +34,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,openrouter_gateway=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "info,opt_router_gateway=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -42,7 +42,7 @@ async fn main() {
     dotenv::dotenv().ok();
 
     public::logo::print();
-    tracing::info!("Starting OpenRouter Gateway...");
+    tracing::info!("Starting OptRouter Gateway...");
 
     // ── Postgres ──────────────────────────────────────────────────────────────
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -76,6 +76,10 @@ async fn main() {
 
     // ── 构造共享状态 ──────────────────────────────────────────────────────────
     let state = router::RouterState::new(db, redis);
+
+    // ── 打印已加载的可用模型 ───────────────────────────────────────────────────
+    let models = state.model_router.list_models().await;
+    tracing::info!("Available models ({}): {}", models.len(), models.join(", "));
 
     // ── 启动自检：各上游网格联通情况 ────────────────────────────────────────────
     startup_check::check_upstreams(state.config.clone()).await;
