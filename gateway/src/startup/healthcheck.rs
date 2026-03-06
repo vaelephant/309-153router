@@ -26,6 +26,14 @@ pub struct UpstreamResult {
     pub status: CheckStatus,
 }
 
+/// 供 GET /health/models 使用：按 provider 小写 key 返回状态与响应时间
+#[derive(Debug, Clone)]
+pub struct ProviderProbeResult {
+    pub provider:   String,
+    pub status:     CheckStatus,
+    pub latency_ms: u64,
+}
+
 /// 检查状态：区分"未配置 Key"、"OK"、"Key 无效"、"不可达"
 #[derive(Debug, Clone)]
 pub enum CheckStatus {
@@ -110,6 +118,67 @@ pub async fn check_upstreams(config: Arc<AppConfig>) -> Vec<UpstreamResult> {
     results
 }
 
+/// 对当前配置的各 Provider 做一次联通探测并返回状态与响应时间。
+/// provider 字段为小写（openai / anthropic / google / together / ollama），便于与 model_router 结果对应。
+pub async fn probe_all_providers_for_api(config: std::sync::Arc<AppConfig>) -> Vec<ProviderProbeResult> {
+    const TIMEOUT_SECS: u64 = 6;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(TIMEOUT_SECS))
+        .build()
+        .unwrap_or_else(|e| {
+            tracing::error!("Failed to build HTTP client for provider probe: {e}");
+            std::process::exit(1);
+        });
+    let p = &config.providers;
+    let checks: Vec<(&str, CheckAuth)> = vec![
+        (
+            "openai",
+            CheckAuth::bearer(
+                &format!("{}/models", p.openai_base_url.trim_end_matches('/')),
+                p.openai_api_key.as_deref(),
+            ),
+        ),
+        (
+            "anthropic",
+            CheckAuth::anthropic(
+                &format!("{}/v1/models", p.anthropic_base_url.trim_end_matches('/')),
+                p.anthropic_api_key.as_deref(),
+            ),
+        ),
+        (
+            "google",
+            CheckAuth::google_key(
+                &format!("{}/models", p.google_base_url.trim_end_matches('/')),
+                p.google_api_key.as_deref(),
+            ),
+        ),
+        (
+            "together",
+            CheckAuth::bearer(
+                &format!("{}/models", p.together_base_url.trim_end_matches('/')),
+                p.together_api_key.as_deref(),
+            ),
+        ),
+        (
+            "ollama",
+            CheckAuth::no_auth(&format!(
+                "{}/models",
+                p.ollama_base_url.trim_end_matches('/')
+            )),
+        ),
+    ];
+    let mut results = Vec::with_capacity(checks.len());
+    for (key, auth) in checks {
+        let (status, latency_ms) = probe_with_latency(&client, &auth).await;
+        results.push(ProviderProbeResult {
+            provider:   key.to_string(),
+            status,
+            latency_ms,
+        });
+    }
+    results
+}
+
 // ─── 认证方式封装 ──────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
@@ -142,46 +211,48 @@ impl CheckAuth {
 }
 
 async fn probe(client: &reqwest::Client, auth: &CheckAuth) -> CheckStatus {
-    // NoAuth 以外，无 key 则跳过
+    let (status, _) = probe_with_latency(client, auth).await;
+    status
+}
+
+/// 同 probe，并返回本次请求的耗时（毫秒）。供 API 使用。
+async fn probe_with_latency(client: &reqwest::Client, auth: &CheckAuth) -> (CheckStatus, u64) {
     if !matches!(auth.kind, AuthKind::NoAuth) && auth.api_key.is_none() {
-        return CheckStatus::NoKey;
+        return (CheckStatus::NoKey, 0);
     }
-
     let key = auth.api_key.as_deref().unwrap_or("");
-
     let req = match auth.kind {
-        AuthKind::NoAuth => {
-            client.get(&auth.url)
-        }
+        AuthKind::NoAuth => client.get(&auth.url),
         AuthKind::Bearer => {
-            client.get(&auth.url)
-                .header("Authorization", format!("Bearer {key}"))
+            client.get(&auth.url).header("Authorization", format!("Bearer {key}"))
         }
         AuthKind::AnthropicKey => {
-            client.get(&auth.url)
+            client
+                .get(&auth.url)
                 .header("x-api-key", key)
                 .header("anthropic-version", "2023-06-01")
         }
-        AuthKind::GoogleQueryKey => {
-            client.get(format!("{}?key={}", auth.url, key))
-        }
+        AuthKind::GoogleQueryKey => client.get(format!("{}?key={}", auth.url, key)),
     };
-
-    match req.send().await {
+    let start = std::time::Instant::now();
+    let result = req.send().await;
+    let latency_ms = start.elapsed().as_millis() as u64;
+    let status = match result {
         Ok(resp) => {
-            let status = resp.status().as_u16();
-            match status {
+            let code = resp.status().as_u16();
+            match code {
                 200..=299 => CheckStatus::Ok,
-                401 | 403 => CheckStatus::AuthFailed(status),
-                // 其他 HTTP 状态（如 404）视为联通但端点有问题，也算 OK（只要不是 401/403）
+                401 | 403 => CheckStatus::AuthFailed(code),
                 _ => CheckStatus::Ok,
             }
         }
-        Err(e) => CheckStatus::Unreachable(
-            if e.is_timeout() { "timeout".to_string() }
-            else { e.to_string() }
-        ),
-    }
+        Err(e) => CheckStatus::Unreachable(if e.is_timeout() {
+            "timeout".to_string()
+        } else {
+            e.to_string()
+        }),
+    };
+    (status, latency_ms)
 }
 
 /// 服务已监听后，对本机 GET /health 做联通检查（带重试）。

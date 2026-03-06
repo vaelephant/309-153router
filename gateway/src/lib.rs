@@ -54,6 +54,7 @@ pub fn build_app(state: router::RouterState) -> Router {
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
     Router::new()
         .route("/health",                    get(api::health::health_check))
+        .route("/health/models",             get(api::health_models::health_models))
         .route("/v1/models",                 get(api::models::list_models))
         .route("/v1/models/{model}/pricing", get(api::models::get_model_pricing))
         .route("/v1/chat/completions",       post(api::chat::chat_completions))

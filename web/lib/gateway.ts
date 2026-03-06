@@ -166,3 +166,32 @@ export async function checkGatewayHealth(): Promise<{
     }
   }
 }
+
+/** GET /health/models 返回：各模型对应上游是否可访问及探测响应时间 */
+export interface HealthModelItem {
+  model: string
+  provider: string
+  status: 'ok' | 'no_key' | 'auth_failed' | 'unreachable'
+  latency_ms: number
+}
+
+export async function getHealthModels(): Promise<
+  { models: HealthModelItem[] } | { error: { message: string } }
+> {
+  try {
+    const response = await fetch(`${GATEWAY_URL}/health/models`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!response.ok) {
+      return { error: { message: `Gateway returned ${response.status}` } }
+    }
+    return await response.json()
+  } catch (error) {
+    return {
+      error: {
+        message: error instanceof Error ? error.message : 'Failed to fetch health/models',
+      },
+    }
+  }
+}

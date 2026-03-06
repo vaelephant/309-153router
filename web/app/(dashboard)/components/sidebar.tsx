@@ -15,6 +15,7 @@ import {
   Layers,
   Users,
   Wallet,
+  ShieldCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -29,7 +30,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { clearUserAuth, getCurrentUserEmail, getCurrentUserId } from "@/lib/auth-client"
 
-const navItems = [
+const userNavItems = [
   { icon: LayoutDashboard, label: "概览", id: "overview", href: "/dashboard" },
   { icon: Zap, label: "模型", id: "models", href: "/models" },
   { icon: Key, label: "API 密钥", id: "keys", href: "/keys" },
@@ -39,6 +40,13 @@ const navItems = [
   { icon: CreditCard, label: "账单", id: "billing", href: "/billing" },
   { icon: BookOpen, label: "文档", id: "docs", href: "/docs" },
   { icon: Settings, label: "设置", id: "settings", href: "/settings" },
+  { icon: ShieldCheck, label: "模型管理", id: "superadmin", href: "/superadmin" },
+]
+
+// 超级管理员在模型管理内时只显示：返回用户端、模型管理（不显示用户端菜单）
+const superadminNavItems = [
+  { icon: LayoutDashboard, label: "返回用户端", id: "overview", href: "/dashboard" },
+  { icon: ShieldCheck, label: "模型管理", id: "superadmin", href: "/superadmin" },
 ]
 
 interface PlanInfo {
@@ -107,8 +115,12 @@ export function DashboardSidebar() {
     if (pathname.startsWith("/billing")) return "billing"
     if (pathname.startsWith("/docs")) return "docs"
     if (pathname.startsWith("/settings")) return "settings"
+    if (pathname.startsWith("/superadmin")) return "superadmin"
     return "overview"
   }, [pathname])
+
+  const isSuperadminView = pathname.startsWith("/superadmin")
+  const navItems = isSuperadminView ? superadminNavItems : userNavItems
 
   const handleLogout = () => {
     clearUserAuth()
@@ -171,8 +183,8 @@ export function DashboardSidebar() {
 
         {/* Bottom */}
         <div className="border-t border-sidebar-border p-2">
-          {/* Plan badge */}
-          {!collapsed && (
+          {/* Plan badge：仅在用户端显示 */}
+          {!isSuperadminView && !collapsed && (
             <div className="mb-2 rounded-md bg-sidebar-accent px-3 py-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">当前方案</span>

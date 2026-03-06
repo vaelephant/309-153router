@@ -136,12 +136,43 @@ model ApiKey {
 }
 
 // ============================================================
+// 供应商表
+// 功能：API 供应商基本信息与默认 base URL
+// ============================================================
+model Provider {
+  id        Int      @id @default(autoincrement())
+
+  /// 供应商代码（openai / anthropic / google / together / ollama）
+  code      String   @unique @db.VarChar(32)
+
+  /// 显示名称
+  name      String?  @db.VarChar(128)
+
+  /// 默认 base URL（模型可覆盖）
+  baseUrl   String   @map("base_url") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  modelPricings ModelPricing[]
+
+  @@index([code])
+  @@map("providers")
+}
+
+// ============================================================
 // 模型定价表
 // 功能：定义不同模型价格 & 成本控制
 // ============================================================
 model ModelPricing {
+  /// 自增 id（便于引用，主键仍为 model_name）
+  id          Int      @unique @default(autoincrement())
+
   /// 模型名称（如 gpt-4o）
   modelName   String   @id @map("model_name")
+
+  /// 所属供应商（可选，未关联时仍用 provider 字段）
+  providerId  Int?     @map("provider_id")
 
   /// 输入 token 单价（每 1K tokens）
   inputPrice  Decimal  @db.Decimal(10,6) @map("input_price")
@@ -149,16 +180,34 @@ model ModelPricing {
   /// 输出 token 单价（每 1K tokens）
   outputPrice Decimal  @db.Decimal(10,6) @map("output_price")
 
-  /// 提供商（openai / anthropic / local）
+  /// 输入 token 成本价（每 1K tokens）
+  inputCost   Decimal? @db.Decimal(10,6) @map("input_cost")
+
+  /// 输出 token 成本价（每 1K tokens）
+  outputCost  Decimal? @db.Decimal(10,6) @map("output_cost")
+
+  /// 提供商（openai / anthropic / local），保留兼容
   provider    String
+
+  /// 模型 base URL 覆盖（不填则用供应商默认）
+  baseUrl     String?  @map("base_url") @db.Text
+
+  /// 模型最大 token 数
+  maxTokens   Int?     @map("max_tokens")
+
+  /// 模型简介
+  description String? @db.Text
 
   /// 是否启用
   enabled     Boolean  @default(true)
 
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  providerRef Provider?  @relation(fields: [providerId], references: [id], onDelete: SetNull)
   usageLogs   UsageLog[]
 
+  @@index([providerId])
   @@map("model_pricing")
 }
 

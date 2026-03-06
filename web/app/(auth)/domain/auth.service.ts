@@ -56,8 +56,11 @@ export async function loginUser(
   headers: { get: (key: string) => string | null }
 ): Promise<LoginResult | AuthError> {
   try {
-    // 验证邮箱格式
-    const trimmedEmail = params.email?.trim().toLowerCase()
+    // 验证邮箱格式（超级管理员允许使用 "admin" 作为用户名，映射为 admin@admin.local）
+    let trimmedEmail = params.email?.trim().toLowerCase()
+    if (trimmedEmail === 'admin') {
+      trimmedEmail = 'admin@admin.local'
+    }
     if (!trimmedEmail || !validateEmail(trimmedEmail)) {
       return {
         success: false,
