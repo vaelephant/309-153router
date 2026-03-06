@@ -73,10 +73,22 @@ web/                    # Next.js 前端
 
 gateway/               # Rust Gateway
 ├── src/
-│   ├── handlers/      # API 处理器
-│   ├── middleware/    # 中间件
-│   ├── providers/     # AI 提供商
-│   └── router/        # 路由逻辑
+│   ├── main.rs            # 二进制入口（init log + dotenv + run()）
+│   ├── lib.rs             # 库入口（build_app / build_state / run / pub mod）
+│   ├── api/               # HTTP 层（请求解析 → 调用 application → 返回响应）
+│   ├── application/       # 应用编排层（鉴权/限流/余额/路由/扣费）
+│   │   ├── auth_service.rs    # API Key 验证（Redis 缓存 + Postgres 回源）
+│   │   └── chat_service.rs    # chat completions 完整业务流程
+│   ├── config/            # 全局配置
+│   ├── db/                # 数据库访问层（pg / redis / types）
+│   ├── error.rs           # 统一错误类型
+│   ├── metrics/           # 计量（compute_cost）
+│   ├── middleware/        # HTTP 工具（Bearer 提取 / SHA-256）
+│   ├── protocol/          # 对外 API 协议结构（OpenAI 兼容格式）
+│   ├── providers/         # AI Provider 适配层（OpenAI / Anthropic / Google 等）
+│   ├── proxy/             # SSE 流代理（AccountingStream）
+│   ├── router/            # 模型路由策略（registry + model_router）
+│   └── startup/           # 启动自检（bootstrap / healthcheck）
 └── Cargo.toml
 ```
 

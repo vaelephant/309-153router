@@ -96,9 +96,9 @@ pub fn load_registry_from_path(path: &str) -> Result<HashMap<String, RouteInfo>,
 }
 
 /// 加载注册表：从配置文件读取，失败则返回错误（无内置默认，需提供 config/models.toml 或设置 REGISTRY_CONFIG）。
-pub fn load_registry() -> Result<HashMap<String, RouteInfo>, String> {
+/// 返回 (routes, config_path) 供调用方使用；不在此处打日志，由 main 启动摘要统一输出。
+pub fn load_registry() -> Result<(HashMap<String, RouteInfo>, String), String> {
     let path = std::env::var("REGISTRY_CONFIG").unwrap_or_else(|_| "config/models.toml".into());
     let routes = load_registry_from_path(&path)?;
-    tracing::info!("Loaded {} models from {}", routes.len(), path);
-    Ok(routes)
+    Ok((routes, path))
 }

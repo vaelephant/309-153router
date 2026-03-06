@@ -19,8 +19,10 @@
 //! | `KEY_CACHE_TTL_SECS` | cache | API Key Redis 缓存 TTL（默认 1800）|
 //! | `GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL` | startup_check | 自检任一下游失败时退出（1/true 时退出，默认仅打日志）|
 
+pub mod loader;
 pub mod providers;
 
+pub use loader::{load as load_toml, GatewayTomlConfig};
 pub use providers::ProviderConfig;
 
 use crate::router::model_router::ProviderType;
@@ -35,12 +37,17 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Self {
+        Self::from_env_with_toml(None)
+    }
+
+    /// 使用 TOML 配置作为默认值（环境变量仍可覆盖）。
+    pub fn from_env_with_toml(toml: Option<&GatewayTomlConfig>) -> Self {
+        let key_ttl = std::env::var("KEY_CACHE_TTL_SECS")
+            .ok().and_then(|v| v.parse().ok())
+            .unwrap_or_else(|| toml.map(|t| t.cache.key_ttl_secs).unwrap_or(1800));
         Self {
-            providers: ProviderConfig::from_env(),
-            key_cache_ttl_secs: std::env::var("KEY_CACHE_TTL_SECS")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(1800),
+            providers: ProviderConfig::from_env_with_toml(toml.map(|t| &t.providers)),
+            key_cache_ttl_secs: key_ttl,
         }
     }
 

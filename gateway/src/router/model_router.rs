@@ -133,4 +133,20 @@ impl ModelRouter {
         models.sort();
         models
     }
+
+    /// 按 Provider 分组，返回 `(provider_name, [model_id, ...])` 列表，已排序。
+    /// 用于启动摘要显示各 Provider 提供的模型。
+    pub async fn models_by_provider(&self) -> Vec<(String, Vec<String>)> {
+        let routes = self.routes.read().await;
+        let mut map: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+        for (model_id, info) in routes.iter() {
+            map.entry(info.provider.as_str().to_string())
+                .or_default()
+                .push(model_id.clone());
+        }
+        for models in map.values_mut() {
+            models.sort();
+        }
+        map.into_iter().collect()
+    }
 }

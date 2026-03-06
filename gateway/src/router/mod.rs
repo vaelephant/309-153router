@@ -59,7 +59,15 @@ pub struct RouterState {
 
 impl RouterState {
     pub fn new(db: sqlx::PgPool, redis: redis::aio::ConnectionManager) -> Self {
-        let config = Arc::new(AppConfig::from_env());
+        Self::new_with_toml(db, redis, None)
+    }
+
+    pub fn new_with_toml(
+        db: sqlx::PgPool,
+        redis: redis::aio::ConnectionManager,
+        toml: Option<&crate::config::GatewayTomlConfig>,
+    ) -> Self {
+        let config = Arc::new(AppConfig::from_env_with_toml(toml));
 
         // 读取代理配置（来自 .env）
         let proxy_enabled = std::env::var("PROXY_ENABLED")
@@ -91,7 +99,7 @@ impl RouterState {
             .build()
             .expect("failed to build reqwest client");
 
-        let routes = load_registry().unwrap_or_else(|e| {
+        let (routes, _registry_path) = load_registry().unwrap_or_else(|e| {
             tracing::error!("Registry config failed: {e}. Set REGISTRY_CONFIG or add config/models.toml");
             std::process::exit(1);
         });
