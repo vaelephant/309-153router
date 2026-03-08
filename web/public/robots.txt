@@ -1,0 +1,17 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# 禁止爬取管理后台和 API 路由
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /superadmin/
+Disallow: /api/
+Disallow: /auth/
+
+# 允许爬取首页和公开页面
+Allow: /
+Allow: /home/
+
+# Sitemap
+Sitemap: https://www.optrouter.com/sitemap.xml
