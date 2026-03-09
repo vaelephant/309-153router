@@ -129,7 +129,7 @@ pub async fn list_enabled_models(pool: &PgPool) -> AppResult<Vec<(String, String
     struct Row {
         model_name: String,
         provider:   String,
-        created_at: chrono::DateTime<chrono::Utc>,
+        created_at: chrono::NaiveDateTime,
     }
 
     let rows: Vec<Row> = sqlx::query_as(
@@ -145,7 +145,7 @@ pub async fn list_enabled_models(pool: &PgPool) -> AppResult<Vec<(String, String
     Ok(rows.into_iter().map(|r| (
         r.model_name,
         r.provider,
-        r.created_at.timestamp(),
+        r.created_at.and_utc().timestamp(),
     )).collect())
 }
 

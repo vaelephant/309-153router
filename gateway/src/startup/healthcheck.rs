@@ -58,25 +58,14 @@ const API_CHECK_RETRIES: u32 = 5;
 const API_CHECK_INTERVAL_SECS: u64 = 1;
 const API_CHECK_TIMEOUT_SECS: u64 = 2;
 
-/// 构建带代理配置的 HTTP client（读取 PROXY_ENABLED / PROXY_URL 环境变量）
+/// 构建健康检查专用 HTTP client（复用全局代理配置，本地地址自动排除）
 fn build_probe_client(timeout_secs: u64) -> reqwest::Client {
-    let proxy_enabled = std::env::var("PROXY_ENABLED")
-        .map(|v| v.to_lowercase() == "true")
-        .unwrap_or(false);
-    let proxy_url = std::env::var("PROXY_URL").ok();
-
     let mut builder = reqwest::Client::builder()
         .timeout(Duration::from_secs(timeout_secs));
 
-    if proxy_enabled {
-        if let Some(url) = &proxy_url {
-            match reqwest::Proxy::all(url) {
-                Ok(proxy) => { builder = builder.proxy(proxy); }
-                Err(e) => {
-                    tracing::warn!("healthcheck: Invalid PROXY_URL '{}': {}", url, e);
-                }
-            }
-        }
+    // 复用全局代理配置（PROXY_ENABLED / PROXY_URL），本地地址自动排除
+    if let Some(proxy) = crate::config::proxy_from_env() {
+        builder = builder.proxy(proxy);
     }
 
     builder.build().unwrap_or_else(|e| {
