@@ -20,6 +20,7 @@
 //! Redis 操作失败**静默降级**（只打 warn 日志），不向上传播错误。
 //! 原因：缓存层故障不应中断核心业务逻辑，只是性能降级（多查一次 DB）。
 
+use bigdecimal::BigDecimal;
 use redis::{aio::ConnectionManager, AsyncCommands};
 use uuid::Uuid;
 
@@ -86,6 +87,46 @@ pub async fn cache_set_key_meta(
         }
         Err(e) => tracing::warn!(err = %e, "failed to serialize ApiKeyMeta for cache"),
     }
+}
+
+// ─── 用户余额缓存 ──────────────────────────────────────────────────────────────
+//
+// Key 格式: `bal:<user_id_uuid>`
+// TTL: 由调用方传入（推荐 30s）
+//
+// 逻辑：
+//   读取时先查缓存，未命中才查 DB 并回填；
+//   扣费成功后立即删除缓存，下次请求强制刷新，避免预检误判余额充足。
+
+fn balance_key(user_id: Uuid) -> String {
+    format!("bal:{user_id}")
+}
+
+/// 读取缓存的用户余额。未命中或 Redis 故障时返回 None（调用方回源 DB）。
+pub async fn cache_get_balance(redis: &mut ConnectionManager, user_id: Uuid) -> Option<BigDecimal> {
+    let key = balance_key(user_id);
+    let s: Option<String> = redis.get(&key).await.ok()?;
+    s?.parse::<BigDecimal>().ok()
+}
+
+/// 将用户余额写入 Redis 缓存，失败静默降级。
+pub async fn cache_set_balance(
+    redis: &mut ConnectionManager,
+    user_id: Uuid,
+    balance: &BigDecimal,
+    ttl_secs: u64,
+) {
+    let key = balance_key(user_id);
+    let result: redis::RedisResult<()> = redis.set_ex(&key, balance.to_string(), ttl_secs).await;
+    if let Err(e) = result {
+        tracing::warn!(err = %e, "cache_set_balance failed");
+    }
+}
+
+/// 扣费成功后立即使余额缓存失效，迫使下次请求从 DB 刷新真实余额。
+pub async fn cache_del_balance(redis: &mut ConnectionManager, user_id: Uuid) {
+    let key = balance_key(user_id);
+    let _: redis::RedisResult<()> = redis.del(&key).await;
 }
 
 /// 立即从 Redis 删除指定 Key 的缓存（吊销时调用）。

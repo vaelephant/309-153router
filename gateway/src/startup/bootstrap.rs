@@ -23,7 +23,7 @@ pub async fn connect_postgres(database_url: &str, toml: &GatewayTomlConfig) -> P
             .acquire_timeout(std::time::Duration::from_secs(pg.acquire_timeout_secs))
             .max_lifetime(std::time::Duration::from_secs(pg.max_lifetime_secs))
             .idle_timeout(std::time::Duration::from_secs(pg.idle_timeout_secs))
-            .test_before_acquire(true)
+            .test_before_acquire(false)
             .connect(database_url)
             .await;
 

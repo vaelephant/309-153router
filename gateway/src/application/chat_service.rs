@@ -34,6 +34,7 @@ pub async fn handle_chat(
     mut request: ChatCompletionRequest,
 ) -> AppResult<Response> {
     let start = Instant::now();
+    let mut t = start;
 
     // 1. 提取路由开关信号
     let session_id = headers.get("x-session-id")
@@ -41,7 +42,7 @@ pub async fn handle_chat(
         .and_then(|s| uuid::Uuid::parse_str(s).ok());
     
     // 智能分层开关：携带特定 Header 或 请求的是虚拟模型
-    let is_virtual_model = matches!(request.model.as_str(), "auto" | "eco" | "balanced" | "premium" | "code" | "reasoning");
+    let is_virtual_model = matches!(request.model.as_str(), "auto" | "eco" | "balanced" | "premium" | "code" | "reasoning" | "longctx");
     let has_intelligent_header = headers.get("x-opt-strategy")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_lowercase() == "intelligent")
@@ -49,13 +50,27 @@ pub async fn handle_chat(
     
     let routing_enabled = is_virtual_model || has_intelligent_header;
 
-    // [临时调试] 打印开关状态
-    tracing::info!("[DEBUG] model={} routing_enabled={} session={:?}", request.model, routing_enabled, session_id);
-
     // 过滤 tool/function 消息，避免 OpenAI 报 400
     request = request.strip_tool_messages();
 
     let meta = authenticate(&state, &headers).await?;
+    info!(ms = t.elapsed().as_millis(), "stage: auth");
+    t = Instant::now();
+
+    // auth 完成后立即并发预读余额缓存，与后续 routing/session Redis 查询重叠执行
+    // 预期节省一次完整 Redis RTT (~200ms)
+    let user_id_for_bal = meta.user_id;
+    let state_for_bal   = state.clone();
+    let balance_prefetch = tokio::spawn(async move {
+        let mut r = state_for_bal.redis.clone();
+        if let Some(cached) = db::cache_get_balance(&mut r, user_id_for_bal).await {
+            Ok::<bigdecimal::BigDecimal, AppError>(cached)
+        } else {
+            let bal = db::get_user_balance(&state_for_bal.db, user_id_for_bal).await?;
+            db::cache_set_balance(&mut r, user_id_for_bal, &bal, 30).await;
+            Ok(bal)
+        }
+    });
 
     if state.check_rate_limit(meta.api_key_id, meta.rate_limit_per_min).is_err() {
         return Err(AppError::RateLimited(
@@ -77,18 +92,37 @@ pub async fn handle_chat(
         if let Some(sid) = session_id {
             let mut redis = state.redis.clone();
             summary = get_session_summary(&mut redis, sid).await;
+            info!(ms = t.elapsed().as_millis(), "stage: redis_session");
+            t = Instant::now();
         }
 
         let last_msg_content = request.messages.last().map(|m| m.content.as_str()).unwrap_or("");
-        let profile = RequestProfile::from_request(&request);
+        let mut profile = RequestProfile::from_request(&request);
+
+        // 用户显式指定档位时，直接锁定 preferred_tier，确保路由到对应档位
+        // "auto" 为自动决策，不设置
+        profile.preferred_tier = match request.model.as_str() {
+            "eco"       => Some(ModelTier::Eco),
+            "balanced"  => Some(ModelTier::Balanced),
+            "premium"   => Some(ModelTier::Premium),
+            "code"      => Some(ModelTier::Code),
+            "reasoning" => Some(ModelTier::Reasoning),
+            "longctx"   => Some(ModelTier::LongCtx),
+            _           => None,
+        };
+
         let route_result = state.model_router.intelligent_route(&profile, summary.as_ref(), last_msg_content, true).await;
         
         match route_result {
             IntelligentRouteResult::Routed(r, d) => {
-                info!(requested = %request.model, routed_to = %r.model, tier = ?d.tier, confidence = d.confidence, "layer 1/2 routing success");
+                info!(ms = t.elapsed().as_millis(), requested = %request.model, routed_to = %r.model, tier = ?d.tier, confidence = d.confidence, "stage: routing_l1l2 → intelligent routing success");
+                t = Instant::now();
                 (r, Some(d))
             }
             IntelligentRouteResult::NeedsRefinement(classifier_model, prompt) => {
+                info!(ms = t.elapsed().as_millis(), "stage: routing_l1l2 → needs refinement");
+                t = Instant::now();
+
                 info!(classifier = %classifier_model, "triggering layer 3 refinement");
                 let classifier_route = state.model_router.route(&classifier_model).await;
                 let refine_req = ChatCompletionRequest {
@@ -116,7 +150,8 @@ pub async fn handle_chat(
                             let tier = state.model_router.parse_refined_tier(text);
                             let final_route = state.model_router.route_by_tier(tier).await.unwrap_or(classifier_route.clone());
                             
-                            info!(tier = ?tier, routed_to = %final_route.model, "layer 3 refinement result");
+                            info!(ms = t.elapsed().as_millis(), tier = ?tier, routed_to = %final_route.model, "stage: routing_l3 → layer 3 refinement result");
+                            t = Instant::now();
                             (final_route, Some(RoutingDecision {
                                 target_model: String::new(),
                                 tier,
@@ -125,27 +160,55 @@ pub async fn handle_chat(
                                 fallback_models: vec![],
                             }))
                         } else {
+                            t = Instant::now();
                             (classifier_route, None)
                         }
                     }
                     _ => {
-                        warn!("layer 3 refinement failed or timed out, falling back to static");
+                        warn!(ms = t.elapsed().as_millis(), "stage: routing_l3 → timed out, falling back to static");
+                        t = Instant::now();
                         (state.model_router.route(&request.model).await, None)
                     }
                 }
             }
             IntelligentRouteResult::Static(_) => {
+                info!(ms = t.elapsed().as_millis(), "stage: routing → static fallback");
+                t = Instant::now();
                 (state.model_router.route(&request.model).await, None)
             }
         }
     } else {
         // --- 关闭分层路由: 100% 静态透传 ---
-        (state.model_router.route(&request.model).await, None)
+        info!(model = %request.model, "static routing");
+        let r = state.model_router.route(&request.model).await;
+        info!(ms = t.elapsed().as_millis(), "stage: routing (static)");
+        t = Instant::now();
+        (r, None)
     };
 
-    let pricing = db::get_model_pricing(&state.db, &route.model)
-        .await?
-        .ok_or_else(|| AppError::BadRequest(format!("model '{}' is not available", route.model)))?;
+    // 定价直接从内存路由表读取（路由表启动时已从 model_pricing 加载）
+    // 无需任何 DB 查询，消除一次 ~2s 的云端 DB 往返
+    if route.is_virtual {
+        return Err(AppError::BadRequest(format!(
+            "model '{}' resolved to a virtual tier — routing may have failed",
+            route.model
+        )));
+    }
+    let pricing = db::ModelPricingInfo {
+        input_price: route.input_price_per_1k.to_string()
+            .parse::<bigdecimal::BigDecimal>()
+            .unwrap_or_else(|_| bigdecimal::BigDecimal::from(0)),
+        output_price: route.output_price_per_1k.to_string()
+            .parse::<bigdecimal::BigDecimal>()
+            .unwrap_or_else(|_| bigdecimal::BigDecimal::from(0)),
+    };
+
+    // 等待 auth 后立即并发发起的余额预读（已与 routing Redis 查询重叠执行）
+    let balance = balance_prefetch
+        .await
+        .map_err(|e| AppError::Internal(format!("balance prefetch panicked: {e}")))?
+        .map_err(|e| e)?;
+    info!(ms = t.elapsed().as_millis(), model = %route.model, "stage: balance_check");
 
     // 余额预检
     let max_tokens = request.max_tokens.unwrap_or(4096) as i32;
@@ -153,7 +216,6 @@ pub async fn handle_chat(
     let estimated_output = bigdecimal::BigDecimal::from(max_tokens) / &k * &pricing.output_price;
     let estimated_input  = bigdecimal::BigDecimal::from(500i32) / &k * &pricing.input_price;
     let estimated_cost   = estimated_input + estimated_output;
-    let balance = db::get_user_balance(&state.db, meta.user_id).await?;
     if balance < estimated_cost {
         return Err(AppError::InsufficientBalance("余额不足，请充值".to_string()));
     }
@@ -173,39 +235,58 @@ pub(crate) async fn handle_non_stream(
     session_id: Option<uuid::Uuid>,
     decision: Option<RoutingDecision>,
 ) -> AppResult<Response> {
+    let t = Instant::now();
     let (resp, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, false).await?;
+    info!(ms = t.elapsed().as_millis(), model = %actual_model, "stage: upstream_call");
     if !resp.status().is_success() {
         let status = resp.status();
         let body   = resp.text().await.unwrap_or_default();
+        error!(
+            requested_model = %request.model,
+            routed_to = %actual_model,
+            upstream_status = %status,
+            upstream_body = %body,
+            "upstream error"
+        );
         return Err(AppError::Upstream(format!("upstream {status}: {body}")));
     }
 
+    let t_parse = Instant::now();
     let upstream_json: serde_json::Value = resp.json().await.map_err(AppError::HttpRequest)?;
     let provider  = build_provider(&route.provider, "", &route.provider_url);
-    let chat_resp: ChatCompletionResponse = provider.convert_response(&request.model, &upstream_json);
+    // 使用实际路由的模型名，让客户端看到真实调用的是哪个模型
+    let chat_resp: ChatCompletionResponse = provider.convert_response(&actual_model, &upstream_json);
+    info!(ms = t_parse.elapsed().as_millis(), total_ms = start.elapsed().as_millis(), "stage: parse_response | total");
 
     let mut latency_ms_header = String::new();
     let mut cost_yuan_header  = String::new();
 
     if let Some(usage) = chat_resp.usage.clone() {
-        let pricing_actual = db::get_model_pricing(&state.db, &actual_model).await.ok().flatten()
-            .unwrap_or(_pricing);
-        let cost    = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &pricing_actual);
+        // 直接用预取的 _pricing 计算响应头，不再同步等待 DB
+        let cost    = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &_pricing);
         let latency = start.elapsed().as_millis();
 
         latency_ms_header = latency.to_string();
         cost_yuan_header  = cost.to_string();
 
-        let db_clone  = state.db.clone();
+        let db_clone    = state.db.clone();
         let redis_clone = state.redis.clone();
-        
-        let messages = request.messages.clone();
-        let tier = decision.as_ref().map(|d| d.tier).unwrap_or(route.tier);
+        let messages       = request.messages.clone();
+        let tier           = decision.as_ref().map(|d| d.tier).unwrap_or(route.tier);
         let requested_model = request.model.clone();
         let routing_was_active = decision.is_some();
+        let route_model    = route.model.clone();
 
         tokio::spawn(async move {
-            // 只有在路由激活且实际模型与请求模型不同时，才计算节省金额
+            // Fallback 时 actual_model != route_model，需补查实际定价以准确计费
+            let pricing_actual = if actual_model != route_model {
+                db::get_model_pricing(&db_clone, &actual_model).await.ok().flatten()
+                    .unwrap_or(_pricing.clone())
+            } else {
+                _pricing.clone()
+            };
+            let cost = compute_cost(usage.prompt_tokens as i32, usage.completion_tokens as i32, &pricing_actual);
+
             let saved_cost = if routing_was_active {
                 let baseline_model = match tier {
                     ModelTier::Premium | ModelTier::Reasoning | ModelTier::LongCtx => "gpt-4o",
@@ -235,9 +316,14 @@ pub(crate) async fn handle_non_stream(
 
             if let Err(e) = db::bill_in_tx(&db_clone, bill_args).await {
                 error!(err = %e, "non-stream billing failed");
+            } else {
+                // 扣费成功 → 立即删余额缓存，下次预检读到真实余额
+                db::cache_del_balance(&mut redis_clone.clone(), meta.user_id).await;
             }
-            if let Some(sid) = session_id {
-                spawn_smart_summary_update(state, sid, messages, redis_clone).await;
+            if routing_was_active {
+                if let Some(sid) = session_id {
+                    spawn_smart_summary_update(state, sid, messages, redis_clone).await;
+                }
             }
         });
     }
@@ -260,13 +346,21 @@ pub(crate) async fn handle_stream(
     session_id: Option<uuid::Uuid>,
     decision: Option<RoutingDecision>,
 ) -> AppResult<Response> {
+    let t = Instant::now();
     let (upstream, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, true).await?;
+    info!(ms = t.elapsed().as_millis(), total_ms = start.elapsed().as_millis(), model = %actual_model, "stage: upstream_connect (ttfb) | total");
     if !upstream.status().is_success() {
-        return Err(AppError::Upstream(format!("upstream stream error: {}", upstream.status())));
+        let status = upstream.status();
+        let body   = upstream.text().await.unwrap_or_default();
+        error!(
+            requested_model = %request.model,
+            routed_to = %actual_model,
+            upstream_status = %status,
+            upstream_body = %body,
+            "upstream stream error"
+        );
+        return Err(AppError::Upstream(format!("upstream {status}: {body}")));
     }
-
-    let pricing_actual = db::get_model_pricing(&state.db, &actual_model).await.ok().flatten()
-        .unwrap_or(_pricing);
 
     let (usage_tx, usage_rx) = tokio::sync::oneshot::channel::<Option<StreamUsage>>();
     let raw_stream = upstream.bytes_stream().map(|r: Result<bytes::Bytes, reqwest::Error>| {
@@ -281,7 +375,9 @@ pub(crate) async fn handle_stream(
     let prov_str   = actual_provider.as_str().to_string();
     let user_id    = meta.user_id;
     let key_id     = meta.api_key_id;
-    let pricing_for_bill = pricing_actual;
+    // 直接用预取的 _pricing，不再在推流前同步查 DB
+    let pricing_prefetched = _pricing;
+    let route_model = route.model.clone();
     let messages = request.messages.clone();
     let tier = decision.as_ref().map(|d| d.tier).unwrap_or(route.tier);
     let routing_was_active = decision.is_some();
@@ -289,6 +385,13 @@ pub(crate) async fn handle_stream(
     tokio::spawn(async move {
         match usage_rx.await {
             Ok(Some(usage)) => {
+                // Fallback 时补查实际定价，否则直接用预取定价
+                let pricing_for_bill = if model_name != route_model {
+                    db::get_model_pricing(&db_clone, &model_name).await.ok().flatten()
+                        .unwrap_or(pricing_prefetched.clone())
+                } else {
+                    pricing_prefetched.clone()
+                };
                 let actual_cost = compute_cost(usage.prompt_tokens, usage.completion_tokens, &pricing_for_bill);
                 
                 let saved_cost = if routing_was_active {
@@ -318,10 +421,15 @@ pub(crate) async fn handle_stream(
                     latency_ms: start.elapsed().as_millis() as i32,
                 }).await {
                     error!(model = %model_name, err = %e, "stream billing failed");
+                } else {
+                    // 扣费成功 → 立即删余额缓存，下次预检读到真实余额
+                    db::cache_del_balance(&mut redis_clone.clone(), user_id).await;
                 }
-                
-                if let Some(sid) = session_id {
-                    spawn_smart_summary_update(state, sid, messages, redis_clone).await;
+
+                if routing_was_active {
+                    if let Some(sid) = session_id {
+                        spawn_smart_summary_update(state, sid, messages, redis_clone).await;
+                    }
                 }
             }
             Ok(None) => warn!(model = %model_name, "stream ended without usage data"),
@@ -399,9 +507,21 @@ pub(crate) async fn call_with_fallback(
             if route.provider == ProviderType::Ollama { Some("") } else { None }
         })
         .ok_or_else(|| AppError::Internal(format!("{:?} API key not configured", route.provider)))?;
-    let provider = build_provider(&route.provider, api_key, &route.provider_url);
 
-    let result = provider.call(&state.http_client, request, stream).await;
+    // 当 DB 里的 provider_url 为空时，退回到 AppConfig 配置的默认地址
+    let effective_url = if route.provider_url.is_empty() {
+        state.config.base_url_for(&route.provider)
+    } else {
+        &route.provider_url
+    };
+
+    let provider = build_provider(&route.provider, api_key, effective_url);
+
+    // 将虚拟模型名（eco/auto 等）替换为实际路由目标模型名，再发往上游
+    let mut upstream_req = request.clone();
+    upstream_req.model = route.model.clone();
+
+    let result = provider.call(&state.http_client, &upstream_req, stream).await;
 
     let needs_fallback = match &result {
         Ok(resp) if resp.status().is_success() => {

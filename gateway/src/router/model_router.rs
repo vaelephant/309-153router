@@ -182,10 +182,10 @@ impl ModelRouter {
 
     /// 解析摘要返回的 JSON
     pub fn parse_summary_response(&self, response: &str, session_id: uuid::Uuid) -> Option<SessionSummary> {
-        let json_str = response.trim()
-            .strip_prefix("```json").unwrap_or(response)
-            .strip_suffix("```").unwrap_or(response)
-            .trim();
+        let trimmed = response.trim();
+        let without_prefix = trimmed.strip_prefix("```json").unwrap_or(trimmed);
+        let without_suffix = without_prefix.strip_suffix("```").unwrap_or(without_prefix);
+        let json_str = without_suffix.trim();
             
         if let Ok(mut summary) = serde_json::from_str::<SessionSummary>(json_str) {
             summary.session_id = session_id;

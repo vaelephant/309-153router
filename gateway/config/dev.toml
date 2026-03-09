@@ -4,12 +4,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [postgres]
-# 本地开发连接池用小一点
-max_connections = 5
-min_connections = 1
-# 本地 DB 通常响应快，超时可以短一点
+max_connections = 20
+min_connections = 3   # 预热 3 条连接，避免冷启动等待
 acquire_timeout_secs = 15
 
 [cache]
 # 开发时缓存短一点，改了 key 状态能快速生效
-key_ttl_secs = 60
+key_ttl_secs = 300
