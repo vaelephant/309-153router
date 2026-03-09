@@ -17,6 +17,8 @@
 //! | `PROVIDER_TIMEOUT_SECS` | providers | 上游请求超时（默认 120）|
 //! | `PROVIDER_POOL_MAX_IDLE` | providers | 连接池大小（默认 20）|
 //! | `KEY_CACHE_TTL_SECS` | cache | API Key Redis 缓存 TTL（默认 1800）|
+//! | `PROXY_ENABLED` | proxy | 是否启用 HTTP 代理（true 启用，默认 false）|
+//! | `PROXY_URL` | proxy | 代理地址（如 http://127.0.0.1:7890）|
 //! | `GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL` | startup_check | 自检任一下游失败时退出（1/true 时退出，默认仅打日志）|
 
 pub mod loader;
@@ -26,6 +28,52 @@ pub use loader::{load as load_toml, GatewayTomlConfig};
 pub use providers::ProviderConfig;
 
 use crate::router::model_router::ProviderType;
+
+// ─── HTTP 代理 ────────────────────────────────────────────────────────────────
+
+/// 从环境变量 `PROXY_ENABLED` / `PROXY_URL` 读取代理配置。
+///
+/// - `PROXY_ENABLED=true` + `PROXY_URL=http://...` → 返回 `Some(Proxy)`
+/// - 本地地址（localhost / 127.0.0.1 / 0.0.0.0 / ::1）自动排除，不走代理
+/// - 其余情况返回 `None`
+pub fn proxy_from_env() -> Option<reqwest::Proxy> {
+    let enabled = std::env::var("PROXY_ENABLED")
+        .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes"))
+        .unwrap_or(false);
+    if !enabled {
+        return None;
+    }
+
+    let url = match std::env::var("PROXY_URL").ok().filter(|s| !s.is_empty()) {
+        Some(u) => u,
+        None => {
+            tracing::warn!("PROXY_ENABLED=true but PROXY_URL not set, proxy disabled");
+            return None;
+        }
+    };
+
+    // Proxy::custom 允许按请求目标地址决定是否走代理
+    // 本地服务（Ollama 等）不走代理，外部 Provider（OpenAI / Anthropic 等）走代理
+    let proxy = reqwest::Proxy::custom(move |req_url| {
+        let host = req_url.host_str().unwrap_or("");
+        if host == "localhost"
+            || host == "127.0.0.1"
+            || host == "0.0.0.0"
+            || host == "::1"
+            || host.starts_with("192.168.")
+            || host.starts_with("10.")
+        {
+            None
+        } else {
+            Some(url.clone())
+        }
+    });
+
+    tracing::info!("HTTP proxy enabled for external providers");
+    Some(proxy)
+}
+
+// ─── AppConfig ────────────────────────────────────────────────────────────────
 
 /// 全局应用配置（只读，线程间共享）
 pub struct AppConfig {
