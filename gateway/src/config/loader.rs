@@ -97,6 +97,24 @@ pub fn load() -> GatewayTomlConfig {
     merge(base, over)
 }
 
+/// 返回本次加载实际用到的配置文件路径（用于启动日志）。
+/// 若两个文件都不存在则返回 `["(defaults only)"]`。
+pub fn loaded_config_paths() -> Vec<String> {
+    let env = std::env::var("APP_ENV").unwrap_or_else(|_| "dev".into());
+    let mut paths = Vec::new();
+    if std::path::Path::new("config/base.toml").exists() {
+        paths.push("config/base.toml".into());
+    }
+    let over = format!("config/{env}.toml");
+    if std::path::Path::new(&over).exists() {
+        paths.push(over);
+    }
+    if paths.is_empty() {
+        paths.push("(defaults only)".into());
+    }
+    paths
+}
+
 fn load_file(path: &str) -> Option<GatewayTomlConfig> {
     match std::fs::read_to_string(path) {
         Ok(s) => match toml::from_str::<GatewayTomlConfig>(&s) {

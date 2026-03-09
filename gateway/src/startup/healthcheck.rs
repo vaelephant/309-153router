@@ -22,8 +22,10 @@ const RESET:  &str = "\x1b[0m";
 /// 单条上游检查结果
 #[derive(Debug, Clone)]
 pub struct UpstreamResult {
-    pub name:   String,
-    pub status: CheckStatus,
+    pub name:      String,
+    pub status:    CheckStatus,
+    /// 本次探测耗时（毫秒），未发请求时为 0
+    pub latency_ms: u64,
 }
 
 /// 供 GET /health/models 使用：按 provider 小写 key 返回状态与响应时间
@@ -107,12 +109,16 @@ pub async fn check_upstreams(config: Arc<AppConfig>) -> Vec<UpstreamResult> {
     let mut any_fail = false;
 
     for (name, auth) in checks {
-        let status = probe(&client, &auth).await;
+        let (status, latency_ms) = probe_with_latency(&client, &auth).await;
         if !status.is_ok() && !matches!(status, CheckStatus::NoKey) {
             warn!(provider = name, status = ?status, "provider check failed");
             any_fail = true;
         }
-        results.push(UpstreamResult { name: name.to_string(), status });
+        results.push(UpstreamResult {
+            name: name.to_string(),
+            status,
+            latency_ms,
+        });
     }
 
     let exit_on_fail = std::env::var("GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL")
@@ -214,12 +220,7 @@ impl CheckAuth {
     }
 }
 
-async fn probe(client: &reqwest::Client, auth: &CheckAuth) -> CheckStatus {
-    let (status, _) = probe_with_latency(client, auth).await;
-    status
-}
-
-/// 同 probe，并返回本次请求的耗时（毫秒）。供 API 使用。
+/// 发送探测请求并返回状态与本次请求耗时（毫秒）。供启动检查与 API 使用。
 async fn probe_with_latency(client: &reqwest::Client, auth: &CheckAuth) -> (CheckStatus, u64) {
     if !matches!(auth.kind, AuthKind::NoAuth) && auth.api_key.is_none() {
         return (CheckStatus::NoKey, 0);
@@ -293,12 +294,30 @@ pub async fn check_api_reachable(port: u16) -> bool {
 ///
 /// `models_by_provider` — 由 `ModelRouter::models_by_provider()` 返回的
 /// `(provider_name, [model_id])` 列表，用于在摘要中按 Provider 展示模型。
+/// `database_url_display` — 脱敏后的数据库连接串（用于日志，不含密码）。
+/// `postgres_ms` / `redis_ms` — 连接耗时（毫秒）。
+/// `config` — 当前生效的网关配置（启动时打印，API Key 仅显示是否已配置）。
+/// `app_env` — APP_ENV（如 dev / prod）。
+/// `proxy_display` — 代理状态（off 或脱敏 URL）。
+/// `config_files` — 已加载的配置文件列表（如 "config/base.toml, config/dev.toml"）。
+/// `provider_check` — "warn only" 或 "exit on fail"。
+/// `total_startup_secs` — 从启动到就绪的总耗时（秒）。
 pub fn print_startup_summary(
     listen_addr: SocketAddr,
     model_count: usize,
     registry_path: &str,
+    database_url_display: &str,
+    postgres_ms: u64,
+    redis_ms: u64,
+    redis_url_display: &str,
     upstream_results: &[UpstreamResult],
     models_by_provider: &[(String, Vec<String>)],
+    config: &crate::config::AppConfig,
+    app_env: &str,
+    proxy_display: &str,
+    config_files: &str,
+    provider_check: &str,
+    total_startup_secs: f64,
     api_ok: bool,
 ) {
     // provider 小写名称 → UpstreamResult
@@ -312,8 +331,11 @@ pub fn print_startup_summary(
     eprintln!("{DIM}┌─────────────────────────────────────────────────────────────{RESET}");
     eprintln!("{DIM}│{RESET} {GREEN}OptRouter Gateway{RESET}");
     eprintln!("{sep}");
-    eprintln!("{DIM}│{RESET}  Postgres     {GREEN}✓{RESET} connected");
-    eprintln!("{DIM}│{RESET}  Redis        {GREEN}✓{RESET} connected");
+    eprintln!("{DIM}│{RESET}  Mode         {DIM}{app_env}{RESET}");
+    eprintln!("{DIM}│{RESET}  Proxy        {DIM}{proxy_display}{RESET}");
+    eprintln!("{DIM}│{RESET}  Config files {DIM}{config_files}{RESET}");
+    eprintln!("{DIM}│{RESET}  Postgres     {GREEN}✓{RESET} connected  {DIM}{database_url_display}{RESET}  {DIM}({postgres_ms}ms){RESET}");
+    eprintln!("{DIM}│{RESET}  Redis        {GREEN}✓{RESET} connected  {DIM}{redis_url_display}{RESET}  {DIM}({redis_ms}ms){RESET}");
     eprintln!("{DIM}│{RESET}  Models       {GREEN}{model_count}{RESET} loaded  {DIM}({registry_path}){RESET}");
     eprintln!("{sep}");
     eprintln!("{DIM}│{RESET}  Providers");
@@ -331,11 +353,19 @@ pub fn print_startup_summary(
         };
 
         let (icon, note) = match upstream_map.get(provider.as_str()) {
-            Some(r) => match &r.status {
-                CheckStatus::Ok              => (format!("{GREEN}✓{RESET}"), String::new()),
-                CheckStatus::AuthFailed(code)=> (format!("{YELLOW}⚠{RESET}"), format!("  {YELLOW}key invalid ({code}){RESET}")),
-                CheckStatus::Unreachable(msg)=> (format!("{RED}✗{RESET}"),   format!("  {DIM}{msg}{RESET}")),
-                CheckStatus::NoKey           => (format!("{DIM}–{RESET}"),   format!("  {DIM}no key configured{RESET}")),
+            Some(r) => {
+                let latency_str = if r.latency_ms > 0 {
+                    format!("  {DIM}{}ms{RESET}", r.latency_ms)
+                } else {
+                    String::new()
+                };
+                let (icon_inner, note_inner) = match &r.status {
+                    CheckStatus::Ok              => (format!("{GREEN}✓{RESET}"), latency_str),
+                    CheckStatus::AuthFailed(code)=> (format!("{YELLOW}⚠{RESET}"), format!("{latency_str}  {YELLOW}key invalid ({code}){RESET}")),
+                    CheckStatus::Unreachable(msg)=> (format!("{RED}✗{RESET}"),   format!("{latency_str}  {DIM}{msg}{RESET}")),
+                    CheckStatus::NoKey           => (format!("{DIM}–{RESET}"),   format!("{latency_str}  {DIM}no key configured{RESET}")),
+                };
+                (icon_inner, note_inner)
             },
             None => (format!("{DIM}–{RESET}"), String::new()),
         };
@@ -352,6 +382,15 @@ pub fn print_startup_summary(
     }
 
     eprintln!("{sep}");
+    eprintln!("{DIM}│{RESET}  Config");
+    for line in config.format_for_startup_display() {
+        eprintln!("{DIM}│{RESET}    {DIM}{line}{RESET}");
+    }
+
+    eprintln!("{sep}");
+    eprintln!("{DIM}│{RESET}  Provider check  {DIM}{provider_check}{RESET}");
+
+    eprintln!("{sep}");
     eprintln!("{DIM}│{RESET}  Listen       {GREEN}✓{RESET}  http://{listen_addr}");
     eprintln!(
         "{DIM}│{RESET}  API          {}",
@@ -360,7 +399,7 @@ pub fn print_startup_summary(
     );
     eprintln!("{DIM}└─────────────────────────────────────────────────────────────{RESET}");
     eprintln!();
-    eprintln!("{GREEN}✓ Gateway is ready.{RESET}  Press Ctrl-C to stop.");
+    eprintln!("{GREEN}✓ Gateway is ready in {total_startup_secs:.2}s.{RESET}  Press Ctrl-C to stop.");
     eprintln!();
 }
 

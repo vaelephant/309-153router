@@ -45,6 +45,7 @@ pub use error::{AppError, AppResult};
 // ─── 公开构建函数（供测试、集成测试、基准测试使用）────────────────────────────
 
 use std::net::SocketAddr;
+use std::time::Instant;
 use axum::{routing::{get, post}, Router};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -77,18 +78,66 @@ pub fn build_state(
 
 /// 完整启动流程：连接基础设施 → 自检 → 监听端口 → 打印摘要 → 进入服务循环。
 /// `main.rs` 只需调用此函数。
+fn mask_database_url(url: &str) -> String {
+    let url = url.trim();
+    if let Some(after_scheme) = url.find("://") {
+        let rest = &url[after_scheme + 3..];
+        if let Some(at_pos) = rest.find('@') {
+            let user_pass = &rest[..at_pos];
+            let host_db = &rest[at_pos..];
+            let user = user_pass.split(':').next().unwrap_or("?");
+            return format!("{}://{}:***@{}", &url[..after_scheme + 3], user, host_db);
+        }
+    }
+    "***".to_string()
+}
+
+/// Redis URL 脱敏：redis://:password@host:port → redis://:***@host:port
+fn mask_redis_url(url: &str) -> String {
+    let url = url.trim();
+    if let Some(after_scheme) = url.find("://") {
+        let rest = &url[after_scheme + 3..];
+        if let Some(at_pos) = rest.find('@') {
+            let host_etc = &rest[at_pos..];
+            return format!("{}://***@{}", &url[..after_scheme + 3], host_etc);
+        }
+        return url.to_string();
+    }
+    url.to_string()
+}
+
 pub async fn run() {
     use startup::{bootstrap, healthcheck};
 
+    let run_start = Instant::now();
     public::logo::print();
 
     let toml_cfg  = config::load_toml();
+    let app_env = std::env::var("APP_ENV").unwrap_or_else(|_| "dev".into());
+    let config_files_str = config::loader::loaded_config_paths().join(", ");
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url_display = mask_database_url(&database_url);
     // REDIS_URL 环境变量优先，其次 TOML，最后默认值
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| toml_cfg.redis.url.clone());
+    let redis_url_display = mask_redis_url(&redis_url);
+    let proxy_display = config::proxy_display_for_startup();
+    let provider_check = if std::env::var("GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL")
+        .ok()
+        .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false)
+    {
+        "exit on fail"
+    } else {
+        "warn only"
+    };
 
-    let db    = bootstrap::connect_postgres(&database_url, &toml_cfg).await;
+    let t0 = Instant::now();
+    let db = bootstrap::connect_postgres(&database_url, &toml_cfg).await;
+    let postgres_ms = t0.elapsed().as_millis() as u64;
+
+    let t0 = Instant::now();
     let redis = bootstrap::connect_redis(&redis_url).await;
+    let redis_ms = t0.elapsed().as_millis() as u64;
 
     let state = build_state(db, redis, Some(&toml_cfg));
     
@@ -102,6 +151,7 @@ pub async fn run() {
     let models_by_provider = state.model_router.models_by_provider().await;
 
     let upstream_results = healthcheck::check_upstreams(state.config.clone()).await;
+    let config_for_summary = state.config.clone();
     let app = build_app(state);
 
     let port: u16 = std::env::var("PORT")
@@ -122,9 +172,20 @@ pub async fn run() {
     });
 
     let api_ok = healthcheck::check_api_reachable(port).await;
+    let total_startup_secs = run_start.elapsed().as_secs_f64();
     healthcheck::print_startup_summary(
         addr, model_count, "Database (model_pricing table)",
-        &upstream_results, &models_by_provider, api_ok,
+        &database_url_display,
+        postgres_ms, redis_ms,
+        &redis_url_display,
+        &upstream_results, &models_by_provider,
+        &config_for_summary,
+        &app_env,
+        &proxy_display,
+        &config_files_str,
+        provider_check,
+        total_startup_secs,
+        api_ok,
     );
 
     server.await.expect("server task panicked");

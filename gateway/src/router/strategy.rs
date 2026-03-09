@@ -202,10 +202,11 @@ pub struct RefinedRouter {
     pub model: String, // 用于分类的小模型名，如 "gpt-4o-mini" 或 "deepseek-chat"
 }
 
+/// 小模型分类模型
 impl Default for RefinedRouter {
     fn default() -> Self {
         Self {
-            model: "gpt-4o-mini".to_string(),
+            model: "gpt-4o-mini".to_string(), // 小模型分类模型
         }
     }
 }
