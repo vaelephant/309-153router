@@ -16,67 +16,52 @@ export function CTA() {
         className="mx-auto px-6"
       >
         <div 
-          className="relative overflow-hidden rounded-2xl border px-8 py-16 text-center sm:px-16"
+          className="relative overflow-hidden rounded-[2rem] border px-8 py-20 text-center sm:px-16 group"
           style={{
             borderColor: 'var(--color-border-default)',
             backgroundColor: 'var(--color-bg-surface)',
-            borderRadius: 'var(--radius-xl)',
-            padding: 'var(--space-9) var(--space-7)',
           }}
         >
-          <div className="relative">
-            <h2 
-              style={{
-                fontSize: 'clamp(28px, 5vw, 40px)',
-                fontWeight: 600,
-                letterSpacing: '-0.02em',
-                color: 'var(--color-text-primary)',
-                marginBottom: 'var(--space-4)',
-                maxWidth: '600px',
-                margin: '0 auto var(--space-4)',
-              }}
+          {/* Animated background element */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[var(--color-accent-primary)]/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
+          <div className="relative max-w-2xl mx-auto">
+            <p
+              className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-primary)] mb-6"
             >
-              准备好开始了吗？
+              立即开始
+            </p>
+            <h2 
+              className="text-3xl sm:text-5xl font-bold tracking-tight text-[var(--color-text-primary)] mb-8"
+            >
+              在更智能的模型层上开始构建
             </h2>
             <p 
-              style={{
-                fontSize: '18px',
-                color: 'var(--color-text-body)',
-                maxWidth: '500px',
-                margin: '0 auto',
-              }}
+              className="text-lg sm:text-xl text-[var(--color-text-body)] mb-12 leading-relaxed"
             >
-              免费注册，立即获得 $5 额度。无需信用卡，随时取消。
+              从一个 API 接入，跨越多个模型供应商，让路由来完成优化。
             </p>
             <div 
-              className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row"
-              style={{ marginTop: 'var(--space-6)' }}
+              className="flex flex-col items-center justify-center gap-4 sm:flex-row"
             >
-              <Link href="/login">
+              <Link href="/register">
                 <Button 
                   size="lg" 
-                  className="ds-btn-primary"
-                  style={{
-                    height: '48px',
-                    padding: '14px 28px',
-                  }}
+                  className="ds-btn-primary h-14 px-10 text-lg font-semibold"
                 >
-                  免费开始使用
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  立即接入
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button 
-                size="lg" 
-                variant="outline"
-                style={{
-                  height: '48px',
-                  padding: '14px 28px',
-                  borderColor: 'var(--color-button-secondary-border)',
-                  color: 'var(--color-button-secondary-text)',
-                }}
-              >
-                查看文档
-              </Button>
+              <Link href="#docs">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="h-14 px-10 text-lg font-semibold border-2"
+                >
+                  查看文档
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

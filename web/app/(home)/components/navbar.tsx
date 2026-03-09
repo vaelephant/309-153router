@@ -7,10 +7,10 @@ import { Menu, X } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
 
 const navLinks = [
-  { href: "#models", label: "模型" },
-  { href: "#features", label: "功能" },
-  { href: "#pricing", label: "定价" },
-  { href: "#docs", label: "文档" },
+  { href: "#features", label: "核心功能" },
+  { href: "#how-it-works", label: "工作原理" },
+  { href: "#pricing", label: "价格方案" },
+  { href: "#docs", label: "开发文档" },
 ]
 
 export function Navbar() {
@@ -18,51 +18,49 @@ export function Navbar() {
 
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-50 border-b"
+      className="fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-md"
       style={{
-        borderColor: 'var(--color-border-default)',
-        backgroundColor: 'var(--color-bg-page)',
-        backdropFilter: 'blur(12px)',
+        borderColor: 'rgba(var(--color-border-default-rgb), 0.1)',
+        backgroundColor: 'rgba(var(--color-bg-page-rgb), 0.8)',
       }}
     >
       <nav 
-        className="mx-auto flex h-16 items-center justify-between px-6"
+        className="mx-auto flex h-16 items-center justify-between px-6 max-w-7xl"
       >
         {/* Logo */}
         <Link 
           href="/" 
-          className="flex items-center gap-2"
+          className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
           style={{ 
             color: 'var(--color-text-primary)',
             textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: '18px',
-            letterSpacing: '-0.02em',
+            fontWeight: 800,
+            fontSize: '20px',
+            letterSpacing: '-0.04em',
           }}
         >
           <div 
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            className="flex h-8 w-8 items-center justify-center rounded-lg shadow-sm"
             style={{
-              background: 'var(--color-button-primary-bg)',
-              color: 'var(--color-button-primary-text)',
+              background: 'var(--color-accent-primary)',
+              color: 'white',
             }}
           >
-            <span style={{ fontSize: '14px', fontWeight: 700 }}>O</span>
+            <span style={{ fontSize: '16px', fontWeight: 900 }}>O</span>
           </div>
           <span>OptRouter</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-10 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm transition-colors hover:text-foreground"
+              className="text-sm font-bold transition-colors hover:text-[var(--color-accent-primary)]"
               style={{
-                color: 'var(--color-text-body)',
+                color: 'var(--color-text-secondary)',
                 textDecoration: 'none',
-                transition: 'color var(--motion-base) var(--ease-standard)',
               }}
             >
               {link.label}
@@ -71,27 +69,30 @@ export function Navbar() {
         </div>
 
         {/* Desktop Actions */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-4 md:flex">
           <Link href="/login">
             <Button 
               variant="ghost" 
               size="sm"
+              className="text-xs font-bold"
               style={{
-                color: 'var(--color-text-body)',
+                color: 'var(--color-text-secondary)',
               }}
             >
               登录
             </Button>
           </Link>
-          <Link href="/login">
+          <Link href="/register">
             <Button 
               size="sm"
-              className="ds-btn-primary px-4 py-2 text-xs"
+              className="ds-btn-primary h-9 px-5 text-xs font-bold"
             >
-              开始使用
+              立即接入
             </Button>
           </Link>
-          <ThemeToggle />
+          <div className="ml-2 pl-4 border-l border-[var(--color-border-default)]">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
@@ -131,11 +132,10 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm transition-colors hover:text-foreground"
+                className="text-sm font-bold transition-colors hover:text-foreground"
                 style={{
                   color: 'var(--color-text-body)',
                   textDecoration: 'none',
-                  transition: 'color var(--motion-base) var(--ease-standard)',
                 }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -148,18 +148,18 @@ export function Navbar() {
                   variant="outline" 
                   className="w-full"
                   style={{
-                    borderColor: 'var(--color-button-secondary-border)',
-                    color: 'var(--color-button-secondary-text)',
+                    borderColor: 'var(--color-border-default)',
+                    color: 'var(--color-text-body)',
                   }}
                 >
                   登录
                 </Button>
               </Link>
-              <Link href="/login" className="w-full">
+              <Link href="/register" className="w-full">
                 <Button 
                   className="w-full ds-btn-primary"
                 >
-                  开始使用
+                  立即接入
                 </Button>
               </Link>
             </div>

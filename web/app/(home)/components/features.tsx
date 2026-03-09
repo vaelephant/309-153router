@@ -1,35 +1,29 @@
-import { Zap, Shield, Globe, Code, BarChart3, Route } from "lucide-react"
+import { Zap, Shield, Globe, Route } from "lucide-react"
 
 const features = [
   {
+    icon: Globe,
+    title: "统一接入",
+    subtitle: "Unified LLM Access",
+    description: "不再逐个对接模型厂商，一个接口统一接入多家主流模型。无需管理多个密钥，降低集成难度。",
+  },
+  {
     icon: Route,
     title: "智能路由",
-    description: "自动选择最优模型，支持 fallback 自动切换。根据延迟、成本或性能智能路由，确保服务高可用。",
-  },
-  {
-    icon: Code,
-    title: "OpenAI 兼容",
-    description: "完全兼容 OpenAI API 格式，一行代码切换。支持所有 OpenAI SDK、LangChain、LlamaIndex 等框架。",
-  },
-  {
-    icon: Globe,
-    title: "统一接口",
-    description: "一个 API 访问 OpenAI、Anthropic、Google、Meta 等 50+ 顶尖 AI 模型，无需管理多个密钥。",
+    subtitle: "Intelligent Routing",
+    description: "让系统自动为不同任务选择更合适的模型。简单任务更省钱，复杂任务更高质量，实现动态平衡。",
   },
   {
     icon: Zap,
-    title: "高性能网关",
-    description: "基于 Rust 的高性能网关，支持流式响应、高并发代理。平均延迟低于 50ms，确保快速响应。",
-  },
-  {
-    icon: BarChart3,
-    title: "统一计费",
-    description: "详细的用量统计、成本分析和性能指标。统一账单管理，让您对 AI 支出了如指掌。",
+    title: "成本优化",
+    subtitle: "Cost Optimization",
+    description: "避免不必要的高价调用。在价格、延迟与能力之间自动平衡，显著降低整体 AI 使用成本。",
   },
   {
     icon: Shield,
-    title: "企业级安全",
-    description: "API Key 管理、权限控制、数据隔离。满足企业级安全要求，支持私有部署。",
+    title: "稳定性保障",
+    subtitle: "Reliability by Design",
+    description: "内建故障切换与多提供商冗余。即使某家供应商发生故障，也能自动 fallback，保障业务不中断。",
   },
 ]
 
@@ -49,47 +43,37 @@ export function Features() {
       >
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center">
-          <h2 
-            style={{
-              fontSize: 'clamp(28px, 5vw, 40px)',
-              fontWeight: 600,
-              letterSpacing: '-0.02em',
-              color: 'var(--color-text-primary)',
-              marginBottom: 'var(--space-4)',
-            }}
+          <p
+            className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-primary)] mb-4"
           >
             为什么选择 OptRouter
+          </p>
+          <h2 
+            className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--color-text-primary)] mb-6"
+          >
+            让多模型调用更简单，也更聪明
           </h2>
           <p 
-            style={{
-              fontSize: '18px',
-              lineHeight: '1.6',
-              color: 'var(--color-text-body)',
-              marginTop: 'var(--space-4)',
-            }}
+            className="text-lg leading-relaxed text-[var(--color-text-body)]"
           >
-            AI 模型的统一入口，让您专注于产品创新，无需管理复杂的模型接入
+            OptRouter 不只是聚合层，更是决策层——聚合解决接入问题，路由解决效果、成本和稳定性问题。
           </p>
         </div>
 
         {/* Features Grid */}
         <div 
-          className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          style={{
-            marginTop: 'var(--space-8)',
-            gap: 'var(--space-5)',
-          }}
+          className="mt-20 grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
         >
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="ds-card group"
+              className="ds-card group relative overflow-hidden transition-all hover:border-[var(--color-accent-primary)]/30 hover:shadow-lg hover:shadow-[var(--color-accent-primary)]/5"
               style={{
                 padding: 'var(--space-6)',
               }}
             >
               <div 
-                className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg"
+                className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl transition-colors group-hover:bg-[var(--color-accent-primary)] group-hover:text-white"
                 style={{
                   backgroundColor: 'var(--color-bg-muted)',
                   color: 'var(--color-text-primary)',
@@ -97,23 +81,20 @@ export function Features() {
               >
                 <feature.icon className="h-6 w-6" />
               </div>
-              <h3 
-                style={{
-                  fontSize: '20px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                  marginBottom: 'var(--space-2)',
-                }}
-              >
-                {feature.title}
-              </h3>
+              <div className="mb-3">
+                <h3 
+                  className="text-lg font-bold text-[var(--color-text-primary)]"
+                >
+                  {feature.title}
+                </h3>
+                <p
+                  className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mt-1"
+                >
+                  {feature.subtitle}
+                </p>
+              </div>
               <p 
-                style={{
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  color: 'var(--color-text-body)',
-                  marginTop: 'var(--space-2)',
-                }}
+                className="text-sm leading-relaxed text-[var(--color-text-body)]"
               >
                 {feature.description}
               </p>

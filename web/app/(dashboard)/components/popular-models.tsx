@@ -1,67 +1,79 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowUpRight } from "lucide-react"
 
-const models = [
-  {
-    name: "GPT-4o",
-    provider: "OpenAI",
-    inputPrice: "$2.50",
-    outputPrice: "$10.00",
-    context: "128K",
-    latency: "~180ms",
-    status: "online" as const,
-  },
-  {
-    name: "Claude 3.5 Sonnet",
-    provider: "Anthropic",
-    inputPrice: "$3.00",
-    outputPrice: "$15.00",
-    context: "200K",
-    latency: "~220ms",
-    status: "online" as const,
-  },
-  {
-    name: "Gemini 2.0 Flash",
-    provider: "Google",
-    inputPrice: "$0.10",
-    outputPrice: "$0.40",
-    context: "1M",
-    latency: "~90ms",
-    status: "online" as const,
-  },
-  {
-    name: "DeepSeek V3",
-    provider: "DeepSeek",
-    inputPrice: "$0.27",
-    outputPrice: "$1.10",
-    context: "64K",
-    latency: "~240ms",
-    status: "online" as const,
-  },
-  {
-    name: "Llama 3.3 70B",
-    provider: "Meta",
-    inputPrice: "$0.60",
-    outputPrice: "$0.80",
-    context: "128K",
-    latency: "~160ms",
-    status: "degraded" as const,
-  },
-  {
-    name: "Mistral Large",
-    provider: "Mistral",
-    inputPrice: "$2.00",
-    outputPrice: "$6.00",
-    context: "128K",
-    latency: "~200ms",
-    status: "online" as const,
-  },
-]
+interface Model {
+  name: string
+  provider: string
+  inputPrice: string
+  outputPrice: string
+  context: string
+  latency: string
+  status: "online" | "degraded"
+}
 
 export function PopularModels() {
+  const [models, setModels] = useState<Model[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchModels() {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/dashboard/models")
+        const result = await response.json()
+
+        if (result.success && Array.isArray(result.data)) {
+          setModels(result.data)
+        } else {
+          setError("数据格式错误")
+        }
+      } catch (err) {
+        console.error("Failed to fetch models:", err)
+        setError("获取模型列表失败")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchModels()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-sm font-medium text-card-foreground">
+            可用模型
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="h-48 animate-pulse rounded bg-muted" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error || models.length === 0) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-sm font-medium text-card-foreground">
+            可用模型
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">
+            {error || "暂无可用模型"}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
   return (
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
