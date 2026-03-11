@@ -3,14 +3,14 @@
 //! TODO：从 usage_logs 表聚合查询，目前返回空数据占位。
 
 use axum::{extract::Query, Json};
-use serde::Deserialize;
+use serde::Deserialize; // 反序列化
 
 use crate::{
     error::{AppError, AppResult},
     protocol::UsageStatsResponse,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize)] // 反序列化
 pub struct UsageQuery {
     user_id: Option<String>,
     /// 统计天数（默认 30，最大 365）

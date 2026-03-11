@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
 import { AuthGuard } from "@/app/(auth)/components/auth-guard"
 import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
 import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
+import { TodayStatsClassic } from "@/components/today-stats-classic"
 import { OverviewCards } from "@/app/(superadmin)/components/overview-cards"
 import { ModelTable } from "@/app/(superadmin)/components/model-table"
 import { ModelBarCharts } from "@/app/(superadmin)/components/model-bar-charts"
@@ -57,6 +58,7 @@ export default function SuperadminDashboardPage() {
         <DashboardLayout>
         <div className="p-6 space-y-6">
           <SuperadminNav />
+          <TodayStatsClassic />
           <div>
             <h1 className="text-lg font-semibold mb-1">Dashboard</h1>
             <p className="text-xs text-muted-foreground">

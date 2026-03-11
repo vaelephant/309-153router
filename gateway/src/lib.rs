@@ -141,7 +141,7 @@ pub async fn run() {
 
     let state = build_state(db, redis, Some(&toml_cfg));
     
-    // 从数据库初始化路由表
+    // 从数据库初始化路由表，获取模型信息，保存在内存内 用于健康检查
     if let Err(e) = state.init_model_router().await {
         tracing::error!("Failed to initialize model router from DB: {e}");
         std::process::exit(1);

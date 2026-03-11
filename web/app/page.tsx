@@ -1,5 +1,7 @@
 import { Navbar } from "./(home)/components/navbar"
+import { WaterfallReveal } from "./(home)/components/waterfall-reveal"
 import { Hero } from "./(home)/components/hero"
+import { TodayStatsClassic } from "@/components/today-stats-classic"
 import { Stats } from "./(home)/components/stats"
 import { Features } from "./(home)/components/features"
 import { CodeExample } from "./(home)/components/code-example"
@@ -10,21 +12,24 @@ import { Footer } from "./(home)/components/footer"
 
 export default function Home() {
   return (
-    <main 
+    <main
       className="min-h-screen"
       style={{
-        backgroundColor: 'var(--color-bg-page)',
+        backgroundColor: "var(--color-bg-page)",
       }}
     >
       <Navbar />
-      <Hero />
-      <Stats />
-      <Features />
-      <CodeExample />
-      <Testimonials />
-      <FAQ />
-      <CTA />
-      <Footer />
+      <WaterfallReveal>
+        <Hero />
+        <Features />
+        <TodayStatsClassic />
+        <Stats />
+        <CodeExample />
+        <Testimonials />
+        <FAQ />
+        <CTA />
+        <Footer />
+      </WaterfallReveal>
     </main>
   )
 }

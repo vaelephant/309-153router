@@ -52,9 +52,8 @@ export function saveUserAuth(userId: string, email: string, token: string, role?
   localStorage.setItem('user_id', userId)
   localStorage.setItem('email', email)
   localStorage.setItem('token', token)
-  if (role) {
-    localStorage.setItem('role', role)
-  }
+  // 登录时始终写入 role，避免残留上一账号的角色；未返回时默认为 user
+  localStorage.setItem('role', role ?? 'user')
 }
 
 /**
@@ -71,7 +70,7 @@ export function getCurrentUserRole(): string | null {
  * 检查当前用户是否为超级管理员
  */
 export function isSuperadmin(): boolean {
-  const role = getCurrentUserRole()
+  const role = getCurrentUserRole()?.trim().toLowerCase()
   return role === 'superadmin'
 }
 

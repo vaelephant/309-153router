@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { isSuperadmin } from '@/lib/auth-client'
+import { isSuperadmin, isAuthenticated, getAuthHeaders, saveUserAuth, getCurrentUserId, getCurrentUserEmail, getCurrentUserToken } from '@/lib/auth-client'
 
 interface SuperadminGuardProps {
   children: React.ReactNode
@@ -15,14 +15,30 @@ export function SuperadminGuard({ children }: SuperadminGuardProps) {
   const [isAuthorized, setIsAuthorized] = useState(false)
 
   useEffect(() => {
-    // 只在客户端检查权限
-    const checkAuth = () => {
-      const isSuperadminUser = isSuperadmin()
+    const checkAuth = async () => {
+      let isSuperadminUser = isSuperadmin()
+      if (!isSuperadminUser && isAuthenticated()) {
+        // 已登录但本地 role 可能未写入或过期，用 profile 接口同步一次
+        try {
+          const res = await fetch('/api/settings/profile', { headers: getAuthHeaders() })
+          const json = await res.json()
+          if (json?.ok && json?.data?.role === 'superadmin') {
+            const userId = getCurrentUserId()
+            const email = getCurrentUserEmail()
+            const token = getCurrentUserToken()
+            if (userId && email && token) {
+              saveUserAuth(userId, email, token, 'superadmin')
+            }
+            isSuperadminUser = true
+          }
+        } catch (_) {
+          // 忽略错误，下面按未授权处理
+        }
+      }
       setIsAuthorized(isSuperadminUser)
       setIsChecking(false)
 
       if (!isSuperadminUser) {
-        // 如果不是超级管理员，重定向到 dashboard
         router.push('/dashboard')
       }
     }
@@ -30,12 +46,10 @@ export function SuperadminGuard({ children }: SuperadminGuardProps) {
     checkAuth()
   }, [router, pathname])
 
-  // 在检查完成前，不渲染任何内容
   if (isChecking) {
     return null
   }
 
-  // 如果未授权，不渲染子组件
   if (!isAuthorized) {
     return null
   }
