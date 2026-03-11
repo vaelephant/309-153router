@@ -17,7 +17,8 @@ export function Navbar() {
 
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-[var(--color-bg-page)]/80 backdrop-blur-xl"
+      className="site-nav fixed top-0 left-0 right-0 z-50 border-b border-border/60 backdrop-blur-xl"
+      style={{ background: 'var(--navbar-bg)' }}
     >
       <nav 
         className="flex h-16 w-full items-center justify-between px-6"

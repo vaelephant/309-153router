@@ -161,6 +161,11 @@
 
 /* Dark theme via class strategy */
 :root.dark {
+
+   /* dark 视觉主色：只改这两处即可，其余与 light 一样用 var(--color-brand) 派生 */
+   --color-brand: #004080;
+   --color-brand-hover: #104080;
+
   --color-bg-page: #070a10;
   --color-bg-surface: #0b1020;
   --color-bg-muted: #0f172a;
@@ -170,21 +175,18 @@
   --color-text-muted: rgba(255,255,255,0.45);
   --color-border-default: rgba(255,255,255,0.12);
   --color-border-subtle: rgba(255,255,255,0.08);
-  --color-accent-primary: var(--color-brand);
-  --color-accent-hover: var(--color-brand-hover);
-  --color-accent-soft: color-mix(in srgb, var(--color-brand) 18%, transparent);
-  --color-button-primary-bg: var(--color-brand);
-  --color-button-primary-hover: var(--color-brand-hover);
-  --color-button-primary-text: #ffffff;
+  /* dark 模式下 accent-soft 改为与深色背景混合，不能用 #fff 否则 hero-glow 会偏白 */
+  --color-accent-soft: color-mix(in srgb, var(--color-brand) 20%, transparent);
+ 
+  /* 主按钮在 dark 下较亮，用深色文字保证对比度 */
+  --color-button-primary-text: #0c4a6e;
   --color-button-secondary-bg: transparent;
   --color-button-secondary-text: rgba(255,255,255,0.92);
   --color-button-secondary-border: rgba(255,255,255,0.22);
-  --color-focus-ring: color-mix(in srgb, var(--color-brand) 50%, transparent);
   --shadow-soft: 0 2px 12px rgba(0,0,0,0.45);
   --shadow-card-hover: 0 10px 28px rgba(0,0,0,0.50);
 
-  /* OKLCH colors for dark mode (shadcn/ui) */
-  /* primary 使用品牌色，与亮色一致 */
+  /* shadcn primary 与品牌一致，用 var 即可 */
   --primary: var(--color-brand);
   --primary-foreground: oklch(1 0 0);      /* 白色文字 */
   --background: oklch(0.03 0 0);              /* near-black */
@@ -221,6 +223,21 @@
   --success-foreground: oklch(0.1 0 0);     /* black text */
   --warning: oklch(0.7 0 0);                  /* dark warning */
   --warning-foreground: oklch(0.1 0 0);      /* black text */
+}
+
+/* dark 下首页导航与页面同色，无毛玻璃避免色差 */
+:root.dark .site-nav {
+  background: var(--color-bg-page) !important;
+  backdrop-filter: none !important;
+}
+
+/* 导航背景变量：light 用半透明毛玻璃，dark 用实色 */
+:root {
+  --navbar-bg: color-mix(in srgb, var(--color-bg-page) 80%, transparent);
+}
+:root.dark {
+  --navbar-bg: var(--color-bg-page);
+  backdrop-filter: none;
 }
 
 /* Base body usage */

@@ -11,8 +11,8 @@ const COPY_RESET_MS = 2000
 const TRUST_TECHS = ["OpenAI SDK", "Ollama SDK", "Google Gemini", "Anthropic Claude", "OpenRouter"]
 
 const FLIP_WORDS = [
-  "接入所有 AI 模型",
-  "降低 30% 调用成本",
+  "接入所有AI模型",
+  "降低37%调用成本",
   "实现智能路由",
   "统一 API 管理",
   "自动故障转移",
@@ -63,7 +63,7 @@ export function Hero() {
             text="一个 API"
             words={FLIP_WORDS}
             duration={3000}
-            wordClassName="text-[var(--color-accent-primary)]"
+            wordClassName="text-[var(--color-brand)] dark:text-white"
           />
         </h1>
 

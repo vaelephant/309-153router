@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface LayoutTextFlipProps {
-  text: string
+  text?: string
   words: string[]
   duration?: number
   className?: string
@@ -20,26 +20,27 @@ export function LayoutTextFlip({
 }: LayoutTextFlipProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
-  const [width, setWidth] = useState<number | undefined>(undefined)
+  const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined)
   const measureRef = useRef<HTMLSpanElement>(null)
   const hiddenRef = useRef<HTMLDivElement>(null)
 
-  // 测量当前词的宽度
-  const measureWidth = useCallback(() => {
+  // 测量所有词取最大宽度，容器宽度固定，静态文字不会左右移动
+  const measureMaxWidth = useCallback(() => {
     if (hiddenRef.current) {
       const spans = hiddenRef.current.children
-      if (spans[currentIndex]) {
-        const w = (spans[currentIndex] as HTMLElement).offsetWidth
-        setWidth(w)
+      let max = 0
+      for (let i = 0; i < spans.length; i++) {
+        max = Math.max(max, (spans[i] as HTMLElement).offsetWidth)
       }
+      if (max > 0) setMaxWidth(max)
     }
-  }, [currentIndex])
+  }, [])
 
   useEffect(() => {
-    measureWidth()
-    window.addEventListener("resize", measureWidth)
-    return () => window.removeEventListener("resize", measureWidth)
-  }, [measureWidth])
+    measureMaxWidth()
+    window.addEventListener("resize", measureMaxWidth)
+    return () => window.removeEventListener("resize", measureMaxWidth)
+  }, [measureMaxWidth])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,14 +71,13 @@ export function LayoutTextFlip({
       </div>
 
       {/* 静态文本 */}
-      <span className="shrink-0">{text}</span>
+      {text && <span className="shrink-0">{text}</span>}
 
-      {/* 翻转文字容器 */}
+      {/* 翻转文字容器：固定最大宽度，静态文字不随之移动 */}
       <span
         className="relative inline-flex overflow-hidden shrink-0"
         style={{
-          width: width ? `${width}px` : "auto",
-          transition: "width 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+          width: maxWidth ? `${maxWidth}px` : "auto",
           verticalAlign: "baseline",
         }}
       >
