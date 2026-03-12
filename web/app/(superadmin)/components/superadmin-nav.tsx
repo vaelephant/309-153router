@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Layers, DollarSign, Activity, Gift } from "lucide-react"
+import { LayoutDashboard, Layers, DollarSign, Activity, Gift, BarChart3 } from "lucide-react"
 
 const navItems = [
   { href: "/superadmin", label: "Dashboard", icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/superadmin/providers", label: "供应商管理", icon: Layers },
   { href: "/superadmin/pricing", label: "配置价格", icon: DollarSign },
   { href: "/superadmin/invite-rewards", label: "邀请奖励设置", icon: Gift },
+  { href: "/superadmin/site-analytics", label: "流量统计", icon: BarChart3 },
 ]
 
 export function SuperadminNav() {

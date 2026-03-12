@@ -7,7 +7,7 @@ import { Check, Copy } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 const codeSnippets: Record<string, string> = {
-  curl: `curl https://OptRouter.ai/api/v1/chat/completions \\
+  curl: `curl https://api.optrouter.com/api/v1/chat/completions \\
   -H "Authorization: Bearer sk-or-v1-..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -19,7 +19,7 @@ const codeSnippets: Record<string, string> = {
   python: `import openai
 
 client = openai.OpenAI(
-    base_url="https://OptRouter.ai/api/v1",
+    base_url="https://api.optrouter.com/api/v1",
     api_key="sk-or-v1-...",
 )
 
@@ -32,7 +32,7 @@ response = client.chat.completions.create(
 
 print(response.choices[0].message.content)`,
   javascript: `const response = await fetch(
-  "https://OptRouter.ai/api/v1/chat/completions",
+  "https://api.optrouter.com/api/v1/chat/completions",
   {
     method: "POST",
     headers: {

@@ -75,7 +75,19 @@ const testimonials = [
   },
 ]
 
+// 将名字中间加*号，如"张明" -> "张*明"，"李婷" -> "李*婷"
+function maskName(name: string): string {
+  if (name.length <= 1) return name
+  if (name.length === 2) {
+    return `${name[0]}*${name[1]}`
+  }
+  // 3个字及以上：保留第一个和最后一个，中间用*代替
+  return `${name[0]}*${name[name.length - 1]}`
+}
+
 function TestimonialCard({ t }: { t: typeof testimonials[number] }) {
+  const maskedName = maskName(t.name)
+  
   return (
     <div
       className="flex-shrink-0 w-[340px] rounded-xl border p-6"
@@ -113,7 +125,7 @@ function TestimonialCard({ t }: { t: typeof testimonials[number] }) {
             className="text-sm font-medium"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            {t.name}
+            {maskedName}
           </p>
           <p
             className="text-xs"

@@ -7,17 +7,26 @@
 ```
 ┌──────────────────────┐
 │    Next.js App       │  (产品层: 用户管理、API Key、计费)
+│  www.optrouter.com   │
 └──────────┬───────────┘
            │ HTTP
            ▼
 ┌──────────────────────┐
 │   Rust Gateway       │  (核心: 模型路由、fallback、流式代理)
+│ api.optrouter.com    │
 └──────────────────────┘
            │
            ▼
     AI Model Providers
   (OpenAI / Claude / Google)
 ```
+
+## 线上地址
+
+| 服务 | 地址 |
+|------|------|
+| 官网 / 控制台 | `https://www.optrouter.com` |
+| API 网关 | `https://api.optrouter.com` |
 
 ## 快速开始
 
@@ -53,7 +62,7 @@ cargo build
 cargo run
 ```
 
-Gateway 默认运行在 http://localhost:3001
+Gateway 本地开发默认运行在 http://localhost:3001，生产环境域名为 https://api.optrouter.com
 
 ## 目录结构
 
@@ -69,6 +78,10 @@ web/                    # Next.js 前端
 │   ├── db.ts          # Prisma 客户端
 │   ├── auth.ts        # 认证中间件
 │   └── gateway.ts     # Gateway 客户端
+├── scripts/           # 脚本
+│   └── webanalytics.py # 网站流量统计钉钉日报
+├── data/              # 数据文件（.gitignore）
+│   └── pageViews.json # 网站访问统计数据
 └── prisma/            # 数据库 Schema
 
 gateway/               # Rust Gateway
@@ -97,11 +110,11 @@ gateway/               # Rust Gateway
 ### 聊天 API
 
 ```bash
-curl -X POST http://localhost:3000/api/chat \
+curl -X POST https://api.optrouter.com/v1/chat/completions \
   -H "Authorization: Bearer sk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4",
+    "model": "gpt-4o",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
@@ -109,11 +122,11 @@ curl -X POST http://localhost:3000/api/chat \
 ### 流式响应
 
 ```bash
-curl -X POST http://localhost:3000/api/chat \
+curl -X POST https://api.optrouter.com/v1/chat/completions \
   -H "Authorization: Bearer sk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4",
+    "model": "gpt-4o",
     "messages": [{"role": "user", "content": "Hello!"}],
     "stream": true
   }'
@@ -124,16 +137,16 @@ curl -X POST http://localhost:3000/api/chat \
 | 页面 | 路径 | 说明 |
 |------|------|------|
 | 仪表盘 | `/dashboard` | 概览统计 |
-| API Keys | `/dashboard/keys` | 管理密钥 |
-| 使用量 | `/dashboard/usage` | 使用统计 |
-| 设置 | `/dashboard/settings` | 账户配置 |
+| API Keys | `/keys` | 管理密钥 |
+| 用量分析 | `/analytics` | 使用统计 |
+| 设置 | `/settings` | 账户配置 |
 
 ## 环境变量
 
 ### web/.env
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/OptRouter
-GATEWAY_URL=http://localhost:3001
+GATEWAY_URL=https://api.optrouter.com
 ```
 
 ### gateway/.env
