@@ -41,12 +41,13 @@ export async function register() {
       console.log(kv('DB Host', `${u.hostname}:${u.port}`))
 
       // 简单测活：resolve 一下 hostname（本地 127.0.0.1 直接 pass）
-      const { isIP } = await import('net')
+      // 使用 require 而非 dynamic import，避免 Edge Runtime 静态分析报错
+      const { isIP } = require('net') as typeof import('net')
       const isLocal = isIP(u.hostname) > 0 || u.hostname === 'localhost'
       if (isLocal) {
         console.log(`  ${ok('数据库地址为本地，跳过 DNS 探测')}`)
       } else {
-        const dns = await import('dns/promises')
+        const dns = require('dns/promises') as typeof import('dns/promises')
         await dns.lookup(u.hostname)
         console.log(`  ${ok(`DNS 解析成功: ${u.hostname}`)}`)
       }

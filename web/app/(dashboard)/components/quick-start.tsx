@@ -11,7 +11,7 @@ const codeSnippets: Record<string, string> = {
   -H "Authorization: Bearer sk-or-v1-..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "openai/gpt-4o",
+    "model": "gpt-4o",
     "messages": [
       {"role": "user", "content": "Hello"}
     ]

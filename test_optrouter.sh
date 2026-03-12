@@ -10,15 +10,8 @@
 # ==============================================================================
 
 # --- 配置区 ---
-<<<<<<< HEAD
-# 生产环境: https://api.optrouter.com/v1
-# 本地开发: http://localhost:3001/v1
-API_BASE="${OPTROUTER_API_BASE:-https://api.optrouter.com/v1}"
-API_KEY="${OPTROUTER_API_KEY:-sk-mm61wdhk-2fcvs5uq9he}" # <--- 请在此处填入有效的 API Key
-=======
 API_BASE="http://localhost:9115/v1"
 API_KEY="sk-mm61wdhk-2fcvs5uq9he" # <--- 请在此处填入有效的 API Key
->>>>>>> 50b20cf2239153423e0a8002edccbeaef73ee712
 SESSION_ID=$(uuidgen)
 
 # 颜色定义

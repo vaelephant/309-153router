@@ -62,11 +62,7 @@ cargo build
 cargo run
 ```
 
-<<<<<<< HEAD
-Gateway 本地开发默认运行在 http://localhost:3001，生产环境域名为 https://api.optrouter.com
-=======
 Gateway 默认运行在 http://localhost:9115
->>>>>>> 50b20cf2239153423e0a8002edccbeaef73ee712
 
 ## 目录结构
 
@@ -150,11 +146,7 @@ curl -X POST https://api.optrouter.com/v1/chat/completions \
 ### web/.env
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/OptRouter
-<<<<<<< HEAD
-GATEWAY_URL=https://api.optrouter.com
-=======
 GATEWAY_URL=http://localhost:9115
->>>>>>> 50b20cf2239153423e0a8002edccbeaef73ee712
 ```
 
 ### gateway/.env
