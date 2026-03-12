@@ -104,7 +104,7 @@ export function CodeExample() {
               完全兼容 OpenAI API 格式，只需更改 baseURL 即可切换到 OptRouter。
               支持所有 OpenAI SDK、LangChain、LlamaIndex 等框架。
               <span style={{ display: 'block', marginTop: 'var(--space-2)', fontSize: '14px', color: 'var(--color-text-body)', opacity: 0.9 }}>
-                示例中为示意地址；本地开发可使用 <code style={{ fontFamily: 'var(--font-mono)', padding: '0 4px', borderRadius: 4, backgroundColor: 'var(--color-bg-muted)' }}>http://localhost:3001/v1</code>，生产环境请替换为实际网关地址。
+                示例中为示意地址；本地开发可使用 <code style={{ fontFamily: 'var(--font-mono)', padding: '0 4px', borderRadius: 4, backgroundColor: 'var(--color-bg-muted)' }}>http://localhost:9115/v1</code>，生产环境请替换为实际网关地址。
               </span>
             </p>
             <ul 

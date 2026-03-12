@@ -10,7 +10,7 @@
 # ==============================================================================
 
 # --- 配置区 ---
-API_BASE="http://localhost:3001/v1"
+API_BASE="http://localhost:9115/v1"
 API_KEY="sk-mm61wdhk-2fcvs5uq9he" # <--- 请在此处填入有效的 API Key
 SESSION_ID=$(uuidgen)
 

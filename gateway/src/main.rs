@@ -71,7 +71,7 @@ async fn main() {
     //   DATABASE_URL=postgres://user:pass@localhost:5432/mydb
     //   REDIS_URL=redis://localhost:6379
     //   OPENAI_API_KEY=sk-xxx
-    //   PORT=3001
+    //   PORT=9115
     //
     // .ok() 的作用:
     //   - 如果 .env 文件不存在或加载失败，.ok() 会忽略错误并继续执行

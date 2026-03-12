@@ -155,7 +155,9 @@ pub async fn run() {
     let app = build_app(state);
 
     let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "3001".into()).parse().expect("PORT must be a number");
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(toml_cfg.server.port);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     let listener = tokio::net::TcpListener::bind(addr).await

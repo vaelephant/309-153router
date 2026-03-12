@@ -53,7 +53,7 @@ cargo build
 cargo run
 ```
 
-Gateway 默认运行在 http://localhost:3001
+Gateway 默认运行在 http://localhost:9115
 
 ## 目录结构
 
@@ -133,12 +133,12 @@ curl -X POST http://localhost:3000/api/chat \
 ### web/.env
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/OptRouter
-GATEWAY_URL=http://localhost:3001
+GATEWAY_URL=http://localhost:9115
 ```
 
 ### gateway/.env
 ```env
-PORT=3001
+PORT=9115
 OPENAI_API_KEY=sk-xxx
 ANTHROPIC_API_KEY=sk-ant-xxx
 ```

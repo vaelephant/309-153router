@@ -336,7 +336,7 @@ pub async fn run() {
     let app = build_app(state.clone());   // state 需要 Clone（已经是 Arc 级别）
 
     let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "3001".into()).parse().expect("PORT must be a number");
+        .unwrap_or_else(|_| "9115".into()).parse().expect("PORT must be a number");
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     let listener = tokio::net::TcpListener::bind(addr).await

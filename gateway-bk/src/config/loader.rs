@@ -30,7 +30,7 @@ pub struct ServerToml {
     #[serde(default = "default_port")]
     pub port: u16,
 }
-fn default_port() -> u16 { 3001 }
+fn default_port() -> u16 { 9115 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct PostgresToml {

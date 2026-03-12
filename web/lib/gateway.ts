@@ -1,4 +1,4 @@
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3001'
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:9115'
 const REQUEST_TIMEOUT = 60000
 
 export interface ChatMessage {

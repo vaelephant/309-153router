@@ -9,7 +9,7 @@
 //! |------|------|------|
 //! | `DATABASE_URL` | — | Postgres 连接串 |
 //! | `REDIS_URL` | — | Redis 连接串（默认 redis://127.0.0.1:6379）|
-//! | `PORT` | — | 监听端口（默认 3001）|
+//! | `PORT` | — | 监听端口（默认 9115）|
 //! | `OPENAI_API_KEY` | providers | OpenAI 平台 Key |
 //! | `ANTHROPIC_API_KEY` | providers | Anthropic 平台 Key |
 //! | `GOOGLE_API_KEY` | providers | Google 平台 Key |
