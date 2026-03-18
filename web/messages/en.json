@@ -12,6 +12,7 @@
     "integration": "Integration",
     "testimonials": "Testimonials",
     "faq": "FAQ",
+    "news": "News",
     "promo": "Invite & Reward"
   },
   "hero": {
@@ -69,6 +70,16 @@
     "a4": "We don’t store your conversations; requests are forwarded over encrypted channels. API keys are hashed; we support enterprise access control and data isolation.",
     "q5": "How does smart routing work?",
     "a5": "The gateway picks the best provider and model by availability, latency and cost. If one fails, it automatically falls back so your service stays up."
+  },
+  "news": {
+    "sectionTitle": "News & Updates",
+    "sectionSubtitle": "Latest updates and deep dives",
+    "viewAll": "View all",
+    "minRead": "{min} min read",
+    "viewArticle": "Read",
+    "emptyTitle": "No articles yet",
+    "emptyDesc": "Articles are on the way…",
+    "backToList": "Back to list"
   },
   "cta": {
     "title": "Ready to get started?",

@@ -15,6 +15,7 @@ export function Navbar() {
     { href: "#integration", label: t("nav.integration") },
     { href: "#testimonials", label: t("nav.testimonials") },
     { href: "#faq", label: t("nav.faq") },
+    { href: "/blog", label: t("nav.news") },
   ]
 
   return (
