@@ -12,6 +12,7 @@
     "integration": "集成",
     "testimonials": "用户反馈",
     "faq": "FAQ",
+    "news": "新闻资讯",
     "promo": "邀请有礼"
   },
   "hero": {
@@ -69,6 +70,16 @@
     "a4": "我们不会存储您的对话内容，所有请求通过加密通道透传到上游模型供应商。API Key 采用哈希存储，支持企业级权限管理和数据隔离。",
     "q5": "智能路由是如何工作的？",
     "a5": "OptRouter 的网关会根据模型可用性、延迟、成本等因素自动选择最优的供应商和模型。当某个供应商故障时，会自动 fallback 到备选供应商，确保服务不中断。"
+  },
+  "news": {
+    "sectionTitle": "新闻资讯",
+    "sectionSubtitle": "最新动态与深度解读",
+    "viewAll": "查看全部",
+    "minRead": "{min} 分钟阅读",
+    "viewArticle": "阅读",
+    "emptyTitle": "暂无文章",
+    "emptyDesc": "文章正在准备中…",
+    "backToList": "返回列表"
   },
   "cta": {
     "title": "准备好开始了吗？",
