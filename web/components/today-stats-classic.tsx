@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useI18n } from "@/lib/i18n-context"
 
 const DURATION_MS = 1200
 
@@ -52,15 +53,13 @@ function useInView(options?: { rootMargin?: string; threshold?: number }) {
   return { ref, inView }
 }
 
-const statsConfig = [
-  { id: 1, key: "requests" as const, name: "今日请求数" },
-  { id: 2, key: "tokens" as const, name: "今日处理 Token 总数" },
-]
+const STAT_KEYS = ["requests", "tokens"] as const
+const STAT_LABEL_KEYS = ["todayStats.labelRequests", "todayStats.labelTokens"]
 
-/** 大数用 万/百万/亿 显示，更有量感 */
-function formatStatValue(n: number): string {
-  if (n >= 100_000_000) return (n / 100_000_000).toFixed(1).replace(/\.0$/, "") + "亿"
-  if (n >= 10_000) return (n / 10_000).toFixed(1).replace(/\.0$/, "") + "万"
+/** 大数用 万/亿 或 K/M 显示 */
+function formatStatValue(n: number, suffixWan: string, suffixYi: string): string {
+  if (n >= 100_000_000) return (n / 100_000_000).toFixed(1).replace(/\.0$/, "") + suffixYi
+  if (n >= 10_000) return (n / 10_000).toFixed(1).replace(/\.0$/, "") + suffixWan
   return n.toLocaleString()
 }
 
@@ -68,9 +67,13 @@ function formatStatValue(n: number): string {
  * 当日统计 - 仅当进入视口时数字才动态 count-up
  */
 export function TodayStatsClassic() {
+  const { t } = useI18n()
   const { ref, inView } = useInView()
   const [data, setData] = useState<{ requests: number; tokens: number } | null>(null)
   const [loading, setLoading] = useState(true)
+  const statsConfig = STAT_KEYS.map((key, i) => ({ id: i + 1, key, name: t(STAT_LABEL_KEYS[i]) }))
+  const suffixWan = t("todayStats.suffixWan")
+  const suffixYi = t("todayStats.suffixYi")
 
   useEffect(() => {
     fetch("/api/stats/today")
@@ -117,7 +120,7 @@ export function TodayStatsClassic() {
             <div key={stat.id} className="mx-auto flex max-w-xs flex-col gap-y-3">
               <dt className="text-xs text-gray-600">{stat.name}</dt>
               <dd className="order-first text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl tabular-nums">
-                {formatStatValue(values[stat.key])}
+                {formatStatValue(values[stat.key], suffixWan, suffixYi)}
               </dd>
             </div>
           ))}

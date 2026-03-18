@@ -1,8 +1,11 @@
 "use client"
 
-import { ThemeToggle } from "@/app/(home)/components/theme-toggle"
+import { ThemeToggle } from "@/app/[locale]/(home)/components/theme-toggle"
+import { useI18n } from "@/lib/i18n-context"
 
 export function Footer() {
+  const { t } = useI18n()
+  const year = new Date().getFullYear()
   return (
     <footer
       className="border-t py-6"
@@ -13,11 +16,11 @@ export function Footer() {
     >
       <div className="mx-auto flex flex-col items-center justify-between gap-4 px-6 sm:flex-row sm:gap-0" style={{ maxWidth: "var(--layout-max-width)" }}>
         <p className="text-xs text-[var(--color-text-muted)]">
-          © {new Date().getFullYear()} OptRouter. All rights reserved.
+          {t("footer.copyright", { year: String(year) })}
         </p>
         <div className="flex items-center gap-4 text-sm text-[var(--color-text-body)]">
           <span className="text-[var(--color-border-default)]" aria-hidden>|</span>
-          <span className="flex items-center" title="切换深色/浅色模式">
+          <span className="flex items-center" title={t("footer.themeToggle")}>
             <ThemeToggle />
           </span>
         </div>
