@@ -40,16 +40,14 @@ export async function register() {
       console.log(kv('DATABASE_URL', masked))
       console.log(kv('DB Host', `${u.hostname}:${u.port}`))
 
-      // 简单测活：resolve 一下 hostname（本地 127.0.0.1 直接 pass）
-      // 使用 require 而非 dynamic import，避免 Edge Runtime 静态分析报错
-      const { isIP } = require('net') as typeof import('net')
-      const isLocal = isIP(u.hostname) > 0 || u.hostname === 'localhost'
+      // 仅做本地/内网判断，不依赖 Node 内置 net/dns，避免 bundler 报 Module not found
+      const isLocalHost = u.hostname === 'localhost' || u.hostname === '127.0.0.1'
+      const isPrivateIP = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(u.hostname)
+      const isLocal = isLocalHost || isPrivateIP
       if (isLocal) {
-        console.log(`  ${ok('数据库地址为本地，跳过 DNS 探测')}`)
+        console.log(`  ${ok('数据库地址为本地/内网')}`)
       } else {
-        const dns = require('dns/promises') as typeof import('dns/promises')
-        await dns.lookup(u.hostname)
-        console.log(`  ${ok(`DNS 解析成功: ${u.hostname}`)}`)
+        console.log(`  ${ok(`数据库主机: ${u.hostname}`)}`)
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)

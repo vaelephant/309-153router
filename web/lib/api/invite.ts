@@ -35,9 +35,11 @@ export type {
 }
 
 /**
- * API 基础路径
+ * 获取 API 基础路径（需带 locale 以匹配 app/[locale]/... 路由）
  */
-const API_BASE = '/api/invite'
+function getApiBase(locale: string): string {
+  return `/${locale}/api/invite`
+}
 
 /**
  * 获取请求头（包含用户ID）
@@ -60,9 +62,10 @@ function getHeaders(): HeadersInit {
  */
 export async function generateInviteCode(
   maxUses: number = 999999, // 默认无限次（999999 表示无限次）
-  expiresAt?: string
+  expiresAt?: string | null,
+  locale: string = 'zh'
 ): Promise<GenerateInviteCodeResponse> {
-  const response = await fetch(`${API_BASE}/generate`, {
+  const response = await fetch(`${getApiBase(locale)}/generate`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -81,8 +84,8 @@ export async function generateInviteCode(
 /**
  * 验证邀请码（用于注册页面实时校验）
  */
-export async function verifyInviteCode(code: string): Promise<InviteCodeVerifyResult> {
-  const response = await fetch(`${API_BASE}/verify?code=${encodeURIComponent(code)}`, {
+export async function verifyInviteCode(code: string, locale: string = 'zh'): Promise<InviteCodeVerifyResult> {
+  const response = await fetch(`${getApiBase(locale)}/verify?code=${encodeURIComponent(code)}`, {
     method: 'GET',
   })
 
@@ -93,8 +96,8 @@ export async function verifyInviteCode(code: string): Promise<InviteCodeVerifyRe
 /**
  * 获取我的邀请码列表
  */
-export async function getMyInviteCodes(): Promise<InviteCode[]> {
-  const response = await fetch(`${API_BASE}/my-codes`, {
+export async function getMyInviteCodes(locale: string = 'zh'): Promise<InviteCode[]> {
+  const response = await fetch(`${getApiBase(locale)}/my-codes`, {
     method: 'GET',
     headers: getHeaders(),
   })
@@ -109,8 +112,8 @@ export async function getMyInviteCodes(): Promise<InviteCode[]> {
 /**
  * 获取我邀请的用户列表
  */
-export async function getMyInvites(): Promise<InvitedUser[]> {
-  const response = await fetch(`${API_BASE}/my-invites`, {
+export async function getMyInvites(locale: string = 'zh'): Promise<InvitedUser[]> {
+  const response = await fetch(`${getApiBase(locale)}/my-invites`, {
     method: 'GET',
     headers: getHeaders(),
   })
@@ -125,7 +128,7 @@ export async function getMyInvites(): Promise<InvitedUser[]> {
 /**
  * 获取邀请统计
  */
-export async function getInviteStats(): Promise<{
+export async function getInviteStats(locale: string = 'zh'): Promise<{
   success: boolean
   stats: {
     total_codes: number
@@ -135,7 +138,7 @@ export async function getInviteStats(): Promise<{
     total_rewards: number
   }
 }> {
-  const response = await fetch(`${API_BASE}/stats`, {
+  const response = await fetch(`${getApiBase(locale)}/stats`, {
     method: 'GET',
     headers: getHeaders(),
   })
@@ -150,8 +153,8 @@ export async function getInviteStats(): Promise<{
 /**
  * 获取每日邀请统计
  */
-export async function getDailyStats(days: number = 7): Promise<Array<{ date: string; count: number }>> {
-  const response = await fetch(`${API_BASE}/daily-stats?days=${days}`, {
+export async function getDailyStats(days: number = 7, locale: string = 'zh'): Promise<Array<{ date: string; count: number }>> {
+  const response = await fetch(`${getApiBase(locale)}/daily-stats?days=${days}`, {
     method: 'GET',
     headers: getHeaders(),
   })
@@ -166,8 +169,8 @@ export async function getDailyStats(days: number = 7): Promise<Array<{ date: str
 /**
  * 获取奖励规则
  */
-export async function getRewardRules(): Promise<RewardRulesResponse['rules']> {
-  const response = await fetch(`${API_BASE}/reward/rules`, {
+export async function getRewardRules(locale: string = 'zh'): Promise<RewardRulesResponse['rules']> {
+  const response = await fetch(`${getApiBase(locale)}/reward/rules`, {
     method: 'GET',
   })
 
@@ -182,10 +185,11 @@ export async function getRewardRules(): Promise<RewardRulesResponse['rules']> {
  * 获取我的奖励记录
  * @param status 可选过滤条件：pending | granted | expired
  */
-export async function getMyRewards(status?: 'pending' | 'granted' | 'expired'): Promise<MyReward[]> {
+export async function getMyRewards(status?: 'pending' | 'granted' | 'expired', locale: string = 'zh'): Promise<MyReward[]> {
+  const base = getApiBase(locale)
   const url = status
-    ? `${API_BASE}/reward/my-rewards?status=${encodeURIComponent(status)}`
-    : `${API_BASE}/reward/my-rewards`
+    ? `${base}/reward/my-rewards?status=${encodeURIComponent(status)}`
+    : `${base}/reward/my-rewards`
   
   const response = await fetch(url, {
     method: 'GET',
@@ -202,8 +206,8 @@ export async function getMyRewards(status?: 'pending' | 'granted' | 'expired'): 
 /**
  * 检查并发放奖励（触发后端自动检查累计邀请奖励）
  */
-export async function checkAndGrantRewards(): Promise<CheckRewardsResponse> {
-  const response = await fetch(`${API_BASE}/reward/check`, {
+export async function checkAndGrantRewards(locale: string = 'zh'): Promise<CheckRewardsResponse> {
+  const response = await fetch(`${getApiBase(locale)}/reward/check`, {
     method: 'POST',
     headers: getHeaders(),
   })

@@ -3,7 +3,7 @@
  * 
  * 此文件作为兼容层，调用 Domain Service
  */
-import { handleInviteCodeOnRegister as handleInviteCodeOnRegisterService } from '@/app/(invite)/domain/invite.service'
+import { handleInviteCodeOnRegister as handleInviteCodeOnRegisterService } from '@/app/[locale]/(invite)/domain/invite.service'
 
 /**
  * 注册时处理邀请码
