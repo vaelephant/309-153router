@@ -2,7 +2,6 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Clock } from "lucide-react"
 import type { NewsItem } from "@/lib/news"
 
 function formatNewsDate(dateStr: string, locale: string): string {
@@ -31,10 +30,9 @@ function getExcerpt(item: NewsItem, maxLen = 120): string {
 export interface NewsCardProps {
   item: NewsItem
   locale: string
-  readTimeText: string
 }
 
-export function NewsCard({ item, locale, readTimeText }: NewsCardProps) {
+export function NewsCard({ item, locale }: NewsCardProps) {
   const excerpt = getExcerpt(item)
 
   return (
@@ -76,25 +74,23 @@ export function NewsCard({ item, locale, readTimeText }: NewsCardProps) {
           style={{ color: "var(--color-text-muted)" }}
         >
           <span>{formatNewsDate(item.date, locale)}</span>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {readTimeText}
-          </span>
         </div>
         {(item.tags?.length ?? 0) > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
             {item.tags!.map((tag) => (
-              <span
+              <Link
                 key={tag}
-                className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium"
+                href={`/${locale}/blog?tag=${encodeURIComponent(tag)}`}
+                className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
                 style={{
                   border: "1px solid var(--color-border-default)",
                   backgroundColor: "var(--color-bg-page)",
                   color: "var(--color-brand)",
+                  textDecoration: "none",
                 }}
               >
                 {tag}
-              </span>
+              </Link>
             ))}
           </div>
         )}

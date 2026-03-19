@@ -79,7 +79,9 @@
     "viewArticle": "Read",
     "emptyTitle": "No articles yet",
     "emptyDesc": "Articles are on the way…",
-    "backToList": "Back to list"
+    "backToList": "Back to list",
+    "filterTag": "Tag: {tag}",
+    "clearFilter": "Clear"
   },
   "cta": {
     "title": "Ready to get started?",
