@@ -79,7 +79,9 @@
     "viewArticle": "阅读",
     "emptyTitle": "暂无文章",
     "emptyDesc": "文章正在准备中…",
-    "backToList": "返回列表"
+    "backToList": "返回列表",
+    "filterTag": "当前标签：{tag}",
+    "clearFilter": "清除筛选"
   },
   "cta": {
     "title": "准备好开始了吗？",

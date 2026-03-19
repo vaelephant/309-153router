@@ -79,7 +79,9 @@
     "viewArticle": "読む",
     "emptyTitle": "記事はまだありません",
     "emptyDesc": "準備中です…",
-    "backToList": "一覧に戻る"
+    "backToList": "一覧に戻る",
+    "filterTag": "タグ：{tag}",
+    "clearFilter": "クリア"
   },
   "cta": {
     "title": "始める準備はできましたか？",

@@ -70,12 +70,7 @@ export default async function BlogSlugPage({ params }: Props) {
             )}
 
             <div className="p-6 md:p-10">
-              <BlogArticleContent
-                type="meta"
-                date={news.date}
-                locale={locale}
-                readTimeMinutes={news.readTimeMinutes}
-              />
+              <BlogArticleContent type="meta" date={news.date} locale={locale} />
               <h1
                 className="text-3xl md:text-5xl font-bold mb-6 leading-tight"
                 style={{ color: "var(--color-text-primary)" }}
