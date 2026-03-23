@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts"
-import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
-import { AuthGuard } from "@/app/(auth)/components/auth-guard"
-import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
-import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
 import { getAuthHeaders } from "@/lib/auth-client"
 import { Eye, Users, TrendingUp, Calendar, RefreshCw } from "lucide-react"
 

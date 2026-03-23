@@ -3,7 +3,7 @@
  * GET /api/admin/devices?days=7
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchDeviceStats } from '@/app/(admin)/domain/admin.service'
+import { fetchDeviceStats } from '@/app/[locale]/(admin)/domain/admin.service'
 
 export async function GET(request: NextRequest) {
   try {

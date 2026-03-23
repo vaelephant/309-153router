@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
-import { AuthGuard } from "@/app/(auth)/components/auth-guard"
-import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
-import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
 import { Card, CardContent } from "@/components/ui/card"
 import { Activity, Wifi, WifiOff, Clock, CheckCircle, XCircle, HelpCircle } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { StatusOverview, ModelStatusItem } from "@/app/(superadmin)/domain/superadmin.service"
+import type { StatusOverview, ModelStatusItem } from "@/app/[locale]/(superadmin)/domain/superadmin.service"
 
 export default function SuperadminStatusPage() {
   const [data, setData] = useState<StatusOverview | null>(null)

@@ -3,7 +3,7 @@
  * GET /api/admin/locations?days=7
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchLocationStats } from '@/app/(admin)/domain/admin.service'
+import { fetchLocationStats } from '@/app/[locale]/(admin)/domain/admin.service'
 
 export async function GET(request: NextRequest) {
   try {

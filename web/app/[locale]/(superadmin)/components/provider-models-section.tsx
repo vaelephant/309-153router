@@ -10,8 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import type { ProviderItem } from "@/app/(superadmin)/domain/superadmin.types"
-import type { ModelPricingItem } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface ProviderModelsSectionProps {
   providers: ProviderItem[]

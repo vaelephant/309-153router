@@ -3,7 +3,7 @@
  * GET /api/admin/behavior?days=7
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchBehaviorStats } from '@/app/(admin)/domain/admin.service'
+import { fetchBehaviorStats } from '@/app/[locale]/(admin)/domain/admin.service'
 
 export async function GET(request: NextRequest) {
   try {

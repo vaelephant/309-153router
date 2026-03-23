@@ -3,7 +3,7 @@
  * GET /api/superadmin/models/stats?days=7
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchModelStats } from '@/app/(superadmin)/domain/superadmin.service'
+import { fetchModelStats } from '@/app/[locale]/(superadmin)/domain/superadmin.service'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

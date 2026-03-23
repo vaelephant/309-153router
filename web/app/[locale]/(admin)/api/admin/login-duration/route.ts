@@ -3,7 +3,7 @@
  * GET /api/admin/login-duration?days=7
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchLoginDurationStats } from '@/app/(admin)/domain/admin.service'
+import { fetchLoginDurationStats } from '@/app/[locale]/(admin)/domain/admin.service'
 
 export async function GET(request: NextRequest) {
   try {

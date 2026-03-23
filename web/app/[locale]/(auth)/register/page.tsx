@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ function getLocaleFromPathname(pathname: string): string {
   return segment && ['zh', 'en', 'ja'].includes(segment) ? segment : 'zh'
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -136,5 +136,31 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function RegisterPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md animate-pulse">
+        <CardHeader>
+          <div className="h-7 w-40 rounded bg-muted" />
+          <div className="mt-2 h-4 w-full rounded bg-muted" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="h-10 w-full rounded bg-muted" />
+          <div className="h-10 w-full rounded bg-muted" />
+          <div className="h-10 w-full rounded bg-muted" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterPageFallback />}>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

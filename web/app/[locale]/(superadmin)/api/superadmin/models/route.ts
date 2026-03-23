@@ -3,7 +3,7 @@
  * GET /api/superadmin/models
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchModelsList } from '@/app/(superadmin)/domain/superadmin.service'
+import { fetchModelsList } from '@/app/[locale]/(superadmin)/domain/superadmin.service'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import type { ModelPricingItem } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface PricingTableProps {
   pricing: ModelPricingItem[]
