@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { ModelUsageStats, ModelDailyStats } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelUsageStats, ModelDailyStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface ModelStatsChartProps {
   days?: number

@@ -3,7 +3,7 @@
  * GET /api/admin/summary
  */
 import { NextResponse } from 'next/server'
-import { fetchAdminSummary } from '@/app/(admin)/domain/admin.service'
+import { fetchAdminSummary } from '@/app/[locale]/(admin)/domain/admin.service'
 
 export async function GET() {
   try {

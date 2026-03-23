@@ -1,18 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
-import { AuthGuard } from "@/app/(auth)/components/auth-guard"
-import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
-import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
 import { TodayStatsClassic } from "@/components/today-stats-classic"
-import { OverviewCards } from "@/app/(superadmin)/components/overview-cards"
-import { ModelTable } from "@/app/(superadmin)/components/model-table"
-import { ModelBarCharts } from "@/app/(superadmin)/components/model-bar-charts"
-import { ModelDailyTrendCharts } from "@/app/(superadmin)/components/model-daily-trend-charts"
+import { OverviewCards } from "@/app/[locale]/(superadmin)/components/overview-cards"
+import { ModelTable } from "@/app/[locale]/(superadmin)/components/model-table"
+import { ModelBarCharts } from "@/app/[locale]/(superadmin)/components/model-bar-charts"
+import { ModelDailyTrendCharts } from "@/app/[locale]/(superadmin)/components/model-daily-trend-charts"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { SuperadminOverview, ModelsListResponse } from "@/app/(superadmin)/domain/superadmin.types"
-import type { ModelDailyStats } from "@/app/(superadmin)/domain/superadmin.types"
+import type { SuperadminOverview, ModelsListResponse } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+import type { ModelDailyStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminDashboardPage() {
   const [overview, setOverview] = useState<SuperadminOverview | null>(null)

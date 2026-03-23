@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
-import { AuthGuard } from "@/app/(auth)/components/auth-guard"
-import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
-import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
-import { ProviderList } from "@/app/(superadmin)/components/provider-list"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
+import { ProviderList } from "@/app/[locale]/(superadmin)/components/provider-list"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { ProviderItem } from "@/app/(superadmin)/domain/superadmin.types"
-import type { ModelPricingItem } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminProvidersPage() {
   const [providers, setProviders] = useState<ProviderItem[]>([])

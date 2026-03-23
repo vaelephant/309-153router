@@ -5,7 +5,7 @@
  * 当提供 newModelName 且与当前不同时，先重命名再应用其余字段
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { updateModelPricing, renameModelPricing } from '@/app/(superadmin)/domain/superadmin.service'
+import { updateModelPricing, renameModelPricing } from '@/app/[locale]/(superadmin)/domain/superadmin.service'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function PATCH(

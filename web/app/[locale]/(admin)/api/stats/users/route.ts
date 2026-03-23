@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isValidUUID } from '@/lib/auth-utils'
-import { fetchUserStats } from '@/app/(admin)/domain/admin.service'
+import { fetchUserStats } from '@/app/[locale]/(admin)/domain/admin.service'
 
 function getCurrentUserId(request: NextRequest): string | null {
   const userId = request.headers.get('x-user-id')

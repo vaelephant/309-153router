@@ -8,7 +8,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import type { ModelUsageStats } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelUsageStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 const chartConfig = {
   requestCount: {

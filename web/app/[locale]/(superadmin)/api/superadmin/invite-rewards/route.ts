@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   getInviteRewardRulesForAdmin,
   updateInviteRewardRuleById,
-} from '../../../../../(invite)/domain/invite.repo'
+} from '@/app/[locale]/(invite)/domain/invite.repo'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

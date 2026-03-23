@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ModelPricingItem, ModelUsageStats } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem, ModelUsageStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface ModelTableProps {
   pricing: ModelPricingItem[]

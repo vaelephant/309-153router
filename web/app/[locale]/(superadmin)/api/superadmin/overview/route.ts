@@ -3,7 +3,7 @@
  * GET /api/superadmin/overview
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchSuperadminOverview } from '@/app/(superadmin)/domain/superadmin.service'
+import { fetchSuperadminOverview } from '@/app/[locale]/(superadmin)/domain/superadmin.service'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

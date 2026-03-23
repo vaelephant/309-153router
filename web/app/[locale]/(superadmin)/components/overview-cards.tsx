@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Cpu, Layers, Zap, DollarSign } from "lucide-react"
-import type { SuperadminOverview } from "@/app/(superadmin)/domain/superadmin.types"
+import type { SuperadminOverview } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface OverviewCardsProps {
   data: SuperadminOverview | null

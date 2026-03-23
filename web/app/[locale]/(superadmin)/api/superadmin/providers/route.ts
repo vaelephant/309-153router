@@ -4,7 +4,7 @@
  * POST /api/superadmin/providers  body: { code, name?, baseUrl }
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchProvidersList, createProvider } from '@/app/(superadmin)/domain/superadmin.service'
+import { fetchProvidersList, createProvider } from '@/app/[locale]/(superadmin)/domain/superadmin.service'
 import { verifySuperadmin } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {

@@ -25,8 +25,8 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Loader2 } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { ProviderItem } from "@/app/(superadmin)/domain/superadmin.types"
-import type { ModelPricingItem } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface ProviderListProps {
   providers: ProviderItem[]

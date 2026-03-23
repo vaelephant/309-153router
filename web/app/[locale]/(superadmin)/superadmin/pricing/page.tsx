@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DashboardLayout } from "@/app/(dashboard)/components/dashboard-layout"
-import { AuthGuard } from "@/app/(auth)/components/auth-guard"
-import { SuperadminGuard } from "@/app/(superadmin)/components/superadmin-guard"
-import { SuperadminNav } from "@/app/(superadmin)/components/superadmin-nav"
-import { PricingTable } from "@/app/(superadmin)/components/pricing-table"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
+import { PricingTable } from "@/app/[locale]/(superadmin)/components/pricing-table"
 import { getAuthHeaders } from "@/lib/auth-client"
-import type { ModelPricingItem } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminPricingPage() {
   const [pricing, setPricing] = useState<ModelPricingItem[]>([])

@@ -17,7 +17,7 @@ import {
   Legend,
 } from "recharts"
 import { format } from "date-fns"
-import type { ModelDailyStats } from "@/app/(superadmin)/domain/superadmin.types"
+import type { ModelDailyStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 const CHART_COLORS = [
   "var(--chart-1)",
