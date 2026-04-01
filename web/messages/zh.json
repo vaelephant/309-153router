@@ -89,6 +89,25 @@
     "buttonStart": "免费开始使用",
     "buttonDocs": "查看文档"
   },
+  "contact": {
+    "title": "联系我们",
+    "subtitle": "留下手机号与需求，我们会尽快联系你，提供接入建议、方案评估与报价支持。",
+    "point0": "支持私有化部署 / API 网关定制 / 供应商接入",
+    "point1": "可协助迁移 OpenAI SDK、LangChain 等现有调用",
+    "point2": "支持企业级权限、审计、计费与风控方案",
+    "phoneLabel": "手机号（必填）",
+    "phonePlaceholder": "请输入手机号",
+    "nameLabel": "姓名（选填）",
+    "namePlaceholder": "怎么称呼你",
+    "messageLabel": "需求描述（选填）",
+    "messagePlaceholder": "简单描述你的场景、预计调用量、希望对接的模型/供应商等",
+    "submit": "提交",
+    "submitting": "提交中…",
+    "success": "已提交，我们会尽快联系你。",
+    "tip": "提交即视为同意我们与您取得联系，仅用于业务沟通。",
+    "errorSubmit": "提交失败",
+    "errorNetwork": "网络错误，请稍后重试"
+  },
   "codeExample": {
     "title": "几分钟内完成集成",
     "subtitle": "完全兼容 OpenAI API 格式，只需更改 baseURL 即可切换到 OptRouter。支持所有 OpenAI SDK、LangChain、LlamaIndex 等框架。",

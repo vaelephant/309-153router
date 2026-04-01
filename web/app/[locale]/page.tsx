@@ -8,6 +8,7 @@ import { Features } from './(home)/components/features'
 import { CodeExample } from './(home)/components/code-example'
 import { Testimonials } from './(home)/components/testimonials'
 import { FAQ } from './(home)/components/faq'
+import { ContactLeadSection } from './(home)/components/contact-lead-section'
 import { CTA } from './(home)/components/cta'
 import { Footer } from '@/components/footer'
 import zhMessages from '@/messages/zh.json'
@@ -91,6 +92,7 @@ export default function HomePage({ params }: Props) {
         <CodeExample />
         <Testimonials />
         <FAQ />
+        <ContactLeadSection />
         <CTA />
         <Footer />
       </WaterfallReveal>

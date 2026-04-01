@@ -89,6 +89,25 @@
     "buttonStart": "Start for free",
     "buttonDocs": "View docs"
   },
+  "contact": {
+    "title": "Contact us",
+    "subtitle": "Leave your phone number and requirements. We'll get back to you with integration advice, evaluation, and pricing support.",
+    "point0": "Private deployment / API gateway customization / provider onboarding",
+    "point1": "Help migrate existing OpenAI SDK / LangChain integrations",
+    "point2": "Enterprise-grade permissions, audit, billing, and risk control",
+    "phoneLabel": "Phone (required)",
+    "phonePlaceholder": "Your phone number",
+    "nameLabel": "Name (optional)",
+    "namePlaceholder": "How should we call you",
+    "messageLabel": "Message (optional)",
+    "messagePlaceholder": "Tell us your scenario, expected volume, and desired models/providers",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "success": "Submitted. We'll contact you soon.",
+    "tip": "By submitting, you agree we may contact you for business communication only.",
+    "errorSubmit": "Submission failed",
+    "errorNetwork": "Network error. Please try again later."
+  },
   "codeExample": {
     "title": "Integrate in minutes",
     "subtitle": "Fully OpenAI API compatible—just change baseURL to OptRouter. Works with OpenAI SDK, LangChain, LlamaIndex and more.",

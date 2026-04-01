@@ -89,6 +89,25 @@
     "buttonStart": "無料で始める",
     "buttonDocs": "ドキュメントを見る"
   },
+  "contact": {
+    "title": "お問い合わせ",
+    "subtitle": "電話番号とご要件をお知らせください。統合のアドバイス、評価、料金のご案内を差し上げます。",
+    "point0": "プライベート導入 / APIゲートウェイのカスタマイズ / プロバイダ追加",
+    "point1": "OpenAI SDK や LangChain など既存実装の移行支援",
+    "point2": "企業向け権限、監査、請求、リスク管理に対応",
+    "phoneLabel": "電話番号（必須）",
+    "phonePlaceholder": "電話番号を入力",
+    "nameLabel": "お名前（任意）",
+    "namePlaceholder": "お名前",
+    "messageLabel": "要件（任意）",
+    "messagePlaceholder": "用途、想定ボリューム、利用したいモデル/プロバイダなど",
+    "submit": "送信",
+    "submitting": "送信中…",
+    "success": "送信しました。追ってご連絡します。",
+    "tip": "送信により、業務連絡目的でのご連絡に同意したものとみなします。",
+    "errorSubmit": "送信に失敗しました",
+    "errorNetwork": "ネットワークエラー。しばらくしてからお試しください。"
+  },
   "codeExample": {
     "title": "数分で統合",
     "subtitle": "OpenAI API 形式に完全対応。baseURL を OptRouter に変更するだけ。OpenAI SDK、LangChain、LlamaIndex などに対応。",
