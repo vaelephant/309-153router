@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { User, Mail, Shield, Calendar, Wallet, Key, Copy, Check } from "lucide-react"
+import { User, Phone, Shield, Calendar, Wallet, Key, Copy, Check } from "lucide-react"
 import { getCurrentUserId } from "@/lib/auth-client"
 import { useI18n } from "@/lib/i18n-context"
 
 interface ProfileData {
   id: string
-  email: string
+  phone: string
   role: string
   created_at: string
   balance: number
@@ -108,9 +108,9 @@ export function SettingsProfile() {
       ),
     },
     {
-      icon: Mail,
-      label: t("dashboard.email"),
-      value: <span className="text-sm">{profile.email}</span>,
+      icon: Phone,
+      label: t("dashboard.phone"),
+      value: <span className="text-sm">{profile.phone}</span>,
     },
     {
       icon: Shield,

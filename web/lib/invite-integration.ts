@@ -9,17 +9,17 @@ import { handleInviteCodeOnRegister as handleInviteCodeOnRegisterService } from 
  * 注册时处理邀请码
  * 
  * @param newUserId - 新注册用户的 ID
- * @param newUserEmail - 新注册用户的邮箱
+ * @param newUserPhone - 新注册用户的手机号
  * @param inviteCodeStr - 用户输入的邀请码
  */
 export async function handleInviteCodeOnRegister(
   newUserId: string,
-  newUserEmail: string,
+  newUserPhone: string,
   inviteCodeStr: string
 ) {
   return handleInviteCodeOnRegisterService({
     newUserId,
-    newUserEmail,
+    newUserPhone,
     inviteCodeStr,
   })
 }

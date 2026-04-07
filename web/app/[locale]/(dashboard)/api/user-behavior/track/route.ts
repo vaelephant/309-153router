@@ -8,9 +8,10 @@ import { trackBehaviorEnter, trackBehaviorLeave } from '../../../domain/dashboar
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { user_id, email, function_name, action } = body
+    const { user_id, phone, email, function_name, action } = body
+    const account = phone || email
 
-    if (!user_id || !email || !function_name || !action) {
+    if (!user_id || !account || !function_name || !action) {
       return NextResponse.json(
         { success: false, detail: '缺少必要参数' },
         { status: 400 }
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (action === 'enter') {
       const result = await trackBehaviorEnter({
         userId: user_id,
-        email,
+        phone: account,
         functionName: function_name,
       })
 

@@ -11,10 +11,12 @@ import { ModelTable } from "@/app/[locale]/(superadmin)/components/model-table"
 import { ModelBarCharts } from "@/app/[locale]/(superadmin)/components/model-bar-charts"
 import { ModelDailyTrendCharts } from "@/app/[locale]/(superadmin)/components/model-daily-trend-charts"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { SuperadminOverview, ModelsListResponse } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 import type { ModelDailyStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminDashboardPage() {
+  const { locale } = useI18n()
   const [overview, setOverview] = useState<SuperadminOverview | null>(null)
   const [modelsData, setModelsData] = useState<ModelsListResponse | null>(null)
   const [dailyStats, setDailyStats] = useState<ModelDailyStats[]>([])
@@ -23,34 +25,34 @@ export default function SuperadminDashboardPage() {
   const [loadingDaily, setLoadingDaily] = useState(true)
 
   useEffect(() => {
-    fetch("/api/superadmin/overview", { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/overview`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) setOverview(json.data)
       })
       .catch(console.error)
       .finally(() => setLoadingOverview(false))
-  }, [])
+  }, [locale])
 
   useEffect(() => {
-    fetch("/api/superadmin/models", { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/models`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) setModelsData(json.data)
       })
       .catch(console.error)
       .finally(() => setLoadingModels(false))
-  }, [])
+  }, [locale])
 
   useEffect(() => {
-    fetch("/api/superadmin/models/stats?days=30", { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/models/stats?days=30`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data?.daily) setDailyStats(json.data.daily)
       })
       .catch(console.error)
       .finally(() => setLoadingDaily(false))
-  }, [])
+  }, [locale])
 
   return (
     <AuthGuard>

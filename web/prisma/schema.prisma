@@ -9,8 +9,8 @@ datasource db {
 model User {
   /// 用户唯一ID（UUID）
   id                       String               @id @default(uuid()) @db.Uuid
-  /// 登录邮箱
-  email                    String               @unique
+  /// 登录手机号（中国大陆 11 位）
+  phone                    String               @unique @map("phone")
   /// 密码哈希（bcrypt/argon2）
   password                 String?
   /// 用户角色：admin / user / enterprise
@@ -207,13 +207,13 @@ model Subscription {
 model UserLoginLog {
   id        BigInt   @id @default(autoincrement())
   userId    String   @map("user_id") @db.Uuid
-  email     String   @db.VarChar(255)
+  phone     String   @map("phone") @db.VarChar(255)
   loginAt   DateTime @default(now()) @map("login_at") @db.Timestamp(6)
   ipAddress String?  @map("ip_address")
   userAgent String?  @map("user_agent")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_login_logs_user")
 
-  @@index([email], map: "idx_user_login_logs_email")
+  @@index([phone], map: "idx_user_login_logs_phone")
   @@index([loginAt], map: "idx_user_login_logs_login_at")
   @@index([userId], map: "idx_user_login_logs_user_id")
   @@map("user_login_logs")
@@ -222,7 +222,7 @@ model UserLoginLog {
 model UserBehaviorLog {
   id              BigInt    @id @default(autoincrement())
   userId          String    @map("user_id") @db.Uuid
-  email           String    @db.VarChar(255)
+  phone           String    @map("phone") @db.VarChar(255)
   functionName    String    @map("function_name")
   startTime       DateTime  @map("start_time") @db.Timestamp(6)
   endTime         DateTime? @map("end_time") @db.Timestamp(6)
@@ -230,7 +230,7 @@ model UserBehaviorLog {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_behavior_logs_user")
 
-  @@index([email], map: "idx_user_behavior_logs_email")
+  @@index([phone], map: "idx_user_behavior_logs_phone")
   @@index([functionName], map: "idx_user_behavior_logs_function_name")
   @@index([startTime], map: "idx_user_behavior_logs_start_time")
   @@index([userId], map: "idx_user_behavior_logs_user_id")

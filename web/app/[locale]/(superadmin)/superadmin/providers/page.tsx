@@ -7,10 +7,12 @@ import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadm
 import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
 import { ProviderList } from "@/app/[locale]/(superadmin)/components/provider-list"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminProvidersPage() {
+  const { locale } = useI18n()
   const [providers, setProviders] = useState<ProviderItem[]>([])
   const [pricing, setPricing] = useState<ModelPricingItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,8 +20,8 @@ export default function SuperadminProvidersPage() {
   const fetchData = () => {
     const headers = getAuthHeaders()
     Promise.all([
-      fetch("/api/superadmin/providers", { headers }).then((r) => r.json()),
-      fetch("/api/superadmin/models", { headers }).then((r) => r.json()),
+      fetch(`/${locale}/api/superadmin/providers`, { headers }).then((r) => r.json()),
+      fetch(`/${locale}/api/superadmin/models`, { headers }).then((r) => r.json()),
     ])
       .then(([provRes, modelsRes]) => {
         if (provRes.success && provRes.data) setProviders(provRes.data)
@@ -32,7 +34,7 @@ export default function SuperadminProvidersPage() {
   useEffect(() => {
     setLoading(true)
     fetchData()
-  }, [])
+  }, [locale])
 
   return (
     <AuthGuard>
@@ -52,7 +54,7 @@ export default function SuperadminProvidersPage() {
             loading={loading}
             onAdded={fetchData}
             onModelUpdate={(modelName, patch) =>
-              fetch(`/api/superadmin/pricing/${encodeURIComponent(modelName)}`, {
+              fetch(`/${locale}/api/superadmin/pricing/${encodeURIComponent(modelName)}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify(patch),

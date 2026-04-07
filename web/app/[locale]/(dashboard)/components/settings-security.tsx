@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n-context"
 
 interface LoginRecord {
   id: string
-  email: string
+  phone: string
   login_at: string
   ip_address: string | null
   user_agent: string | null

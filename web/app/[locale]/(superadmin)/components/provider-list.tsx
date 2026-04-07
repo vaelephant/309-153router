@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Loader2 } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
@@ -66,6 +67,7 @@ function buildProviderModelRows(
 }
 
 export function ProviderList({ providers, pricing, loading, onAdded, onModelUpdate }: ProviderListProps) {
+  const { locale } = useI18n()
   const rows = useMemo(
     () => buildProviderModelRows(providers, pricing),
     [providers, pricing]
@@ -99,7 +101,7 @@ export function ProviderList({ providers, pricing, loading, onAdded, onModelUpda
     }
     setSubmitting(true)
     try {
-      const res = await fetch("/api/superadmin/providers", {
+      const res = await fetch(`/${locale}/api/superadmin/providers`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({

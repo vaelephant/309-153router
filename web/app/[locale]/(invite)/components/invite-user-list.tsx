@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n-context"
 
 interface InviteUser {
   id: number
-  invitee_email: string | null
+  invitee_phone: string | null
   used_at: string | null
 }
 
@@ -39,7 +39,7 @@ export function InviteUserList({ invites, loading }: InviteUserListProps) {
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <span className="font-medium truncate">
-                    {invite.invitee_email || t("invite.unknownUser")}
+                    {invite.invitee_phone || t("invite.unknownUser")}
                   </span>
                   <span className="text-xs text-muted-foreground shrink-0">
                     {invite.used_at

@@ -48,7 +48,7 @@ export interface AdminSummaryData {
   }
   user_details: Array<{
     user_id: string
-    email: string
+    phone: string
     created_at: string
   }>
 }
@@ -92,7 +92,7 @@ export interface BehaviorStatsFunction {
 
 export interface BehaviorStatsUser {
   user_id: string
-  email: string
+  phone: string
   session_count: number
   total_duration_seconds: number
   average_duration_seconds: number
@@ -108,7 +108,7 @@ export interface BehaviorStatsDaily {
 export interface BehaviorStatsSession {
   function_name: string
   user_id: string
-  email: string
+  phone: string
   start_time: string
   end_time: string | null
   duration_seconds: number
@@ -124,7 +124,7 @@ export interface BehaviorStats {
 
 export interface LoginDurationItem {
   user_id: string
-  email: string | null
+  phone: string | null
   total_minutes: number
   total_hours: number
 }

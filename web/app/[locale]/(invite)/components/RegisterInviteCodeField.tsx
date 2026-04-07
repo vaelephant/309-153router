@@ -35,7 +35,7 @@ export function RegisterInviteCodeField({ fieldErrors, onInviteCodeChange }: Reg
   const [inviteCodeResult, setInviteCodeResult] = useState<{
     valid: boolean
     message?: string
-    inviterEmail?: string
+    inviterPhone?: string
   } | null>(null)
 
   // 从 URL 参数读取邀请码
@@ -65,7 +65,7 @@ export function RegisterInviteCodeField({ fieldErrors, onInviteCodeChange }: Reg
       if (result.success && result.valid) {
         setInviteCodeResult({
           valid: true,
-          inviterEmail: result.invite_code?.inviter_email || "",
+          inviterPhone: result.invite_code?.inviter_phone || "",
         })
       } else {
         setInviteCodeResult({
@@ -152,9 +152,9 @@ export function RegisterInviteCodeField({ fieldErrors, onInviteCodeChange }: Reg
         <p id="invite-code-status" className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
           {t("authInviteCode.valid")}
-          {inviteCodeResult.inviterEmail && (
+          {inviteCodeResult.inviterPhone && (
             <span className="text-muted-foreground">
-              （{t("authInviteCode.inviter")}：{inviteCodeResult.inviterEmail}）
+              （{t("authInviteCode.inviter")}：{inviteCodeResult.inviterPhone}）
             </span>
           )}
         </p>

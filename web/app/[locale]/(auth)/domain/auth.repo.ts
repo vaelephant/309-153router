@@ -5,20 +5,20 @@ import { prisma } from '@/lib/db'
 import type { LoginLogData } from './auth.types'
 
 /**
- * 根据邮箱查找用户
+ * 根据手机号查找用户
  */
-export async function findUserByEmail(email: string) {
+export async function findUserByPhone(phone: string) {
   return prisma.user.findUnique({
-    where: { email },
+    where: { phone },
   })
 }
 
 /**
- * 检查邮箱是否已存在
+ * 检查手机号是否已注册
  */
-export async function checkEmailExists(email: string): Promise<boolean> {
+export async function checkPhoneExists(phone: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { phone },
     select: { id: true },
   })
   return !!user
@@ -28,13 +28,13 @@ export async function checkEmailExists(email: string): Promise<boolean> {
  * 创建新用户
  */
 export async function createUser(data: {
-  email: string
+  phone: string
   password: string
   role?: string
 }) {
   return prisma.user.create({
     data: {
-      email: data.email,
+      phone: data.phone,
       password: data.password,
       role: data.role || 'user',
     },
@@ -58,7 +58,7 @@ export async function createLoginLog(data: LoginLogData) {
   return prisma.userLoginLog.create({
     data: {
       userId: data.userId,
-      email: data.email,
+      phone: data.phone,
       loginAt: data.loginAt,
       ipAddress: data.ipAddress,
       userAgent: data.userAgent,

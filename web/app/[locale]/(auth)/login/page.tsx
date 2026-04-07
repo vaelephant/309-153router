@@ -20,7 +20,7 @@ export default function LoginPage() {
   const pathname = usePathname()
   const locale = getLocaleFromPathname(pathname)
   const { t } = useI18n()
-  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -34,7 +34,7 @@ export default function LoginPage() {
       const response = await fetch(`/${locale}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone, password }),
       })
 
       const data = await response.json()
@@ -45,7 +45,8 @@ export default function LoginPage() {
           setError(t('auth.errorMissingUserId'))
           return
         }
-        saveUserAuth(userId, data.email, data.token, data.role)
+        const p = data.phone ?? data.email
+        saveUserAuth(userId, p, data.token, data.role)
         router.push(`/${locale}/dashboard`)
         router.refresh()
       } else {
@@ -73,13 +74,16 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
+              <Label htmlFor="phone">{t('auth.phone')}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder={t('auth.placeholderEmail')}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                maxLength={11}
+                placeholder={t('auth.placeholderPhone')}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                 required
                 disabled={loading}
               />

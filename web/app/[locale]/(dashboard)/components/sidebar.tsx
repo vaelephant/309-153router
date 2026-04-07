@@ -27,7 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { LocaleLink } from "@/components/locale-link"
 import { usePathname, useRouter } from "next/navigation"
-import { clearUserAuth, getCurrentUserEmail, getCurrentUserId, isSuperadmin } from "@/lib/auth-client"
+import { clearUserAuth, getCurrentUserPhone, getCurrentUserId, isSuperadmin } from "@/lib/auth-client"
 import { useI18n } from "@/lib/i18n-context"
 
 const userNavItems = [
@@ -67,12 +67,12 @@ export function DashboardSidebar() {
     setCollapsed(value)
     localStorage.setItem("sidebar-collapsed", String(value))
   }
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userPhone, setUserPhone] = useState<string | null>(null)
   const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null)
   const [planLoading, setPlanLoading] = useState(true)
 
   useEffect(() => {
-    setUserEmail(getCurrentUserEmail())
+    setUserPhone(getCurrentUserPhone())
   }, [])
 
   useEffect(() => {
@@ -105,12 +105,11 @@ export function DashboardSidebar() {
   }, [locale])
 
   const initials = useMemo(() => {
-    const email = (userEmail || "").trim()
-    if (!email) return "U"
-    const head = email.split("@")[0] || email
-    const letters = head.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()
-    return (letters.slice(0, 2) || "U").padEnd(2, "U")
-  }, [userEmail])
+    const p = (userPhone || "").replace(/\D/g, "")
+    if (p.length >= 4) return p.slice(-4)
+    if (p.length > 0) return p
+    return "U"
+  }, [userPhone])
 
   const activeItem = useMemo(() => {
     if (pathname?.endsWith("/dashboard")) return "overview"
@@ -269,10 +268,10 @@ export function DashboardSidebar() {
               <div className="flex flex-1 items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-sidebar-foreground">
-                    {userEmail || t("dashboard.notLoggedIn")}
+                    {userPhone || t("dashboard.notLoggedIn")}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {userEmail || "—"}
+                    {userPhone || "—"}
                   </p>
                 </div>
                 <button

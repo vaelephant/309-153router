@@ -6,7 +6,7 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const SUPERADMIN_EMAIL = 'admin@admin.local'
+const SUPERADMIN_PHONE = '13800138000'
 const SUPERADMIN_PASSWORD = 'admin'
 const SUPERADMIN_ROLE = 'superadmin'
 
@@ -15,9 +15,9 @@ async function main() {
   const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10)
 
   const user = await prisma.user.upsert({
-    where: { email: SUPERADMIN_EMAIL },
+    where: { phone: SUPERADMIN_PHONE },
     create: {
-      email: SUPERADMIN_EMAIL,
+      phone: SUPERADMIN_PHONE,
       password: passwordHash,
       role: SUPERADMIN_ROLE,
     },
@@ -28,7 +28,7 @@ async function main() {
   })
 
   console.log('Superadmin account ready:')
-  console.log('  Email (登录邮箱):', SUPERADMIN_EMAIL)
+  console.log('  Phone (登录手机号):', SUPERADMIN_PHONE)
   console.log('  Password (密码):', SUPERADMIN_PASSWORD)
   console.log('  Role:', user.role)
   console.log('  User ID:', user.id)
