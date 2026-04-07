@@ -163,7 +163,7 @@ export async function getLoginLogs(startDate: Date, options?: {
       ipAddress: true,
       userId: true,
       loginAt: true,
-      email: true,
+      phone: true,
     },
     orderBy: {
       loginAt: options?.includeUserAgent ? undefined : 'asc',
@@ -183,7 +183,7 @@ export async function getBehaviorLogs(startDate: Date, limit: number = 2000) {
     },
     select: {
       userId: true,
-      email: true,
+      phone: true,
       functionName: true,
       startTime: true,
       endTime: true,
@@ -246,7 +246,7 @@ export async function getRecentUsers(limit: number = 10) {
     },
     select: {
       id: true,
-      email: true,
+      phone: true,
       createdAt: true,
     },
   })

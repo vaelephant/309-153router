@@ -171,7 +171,7 @@ export async function fetchAdminSummary(): Promise<AdminSummaryData> {
     },
     user_details: recentUsers.map((user) => ({
       user_id: user.id,
-      email: user.email,
+      phone: user.phone,
       created_at: user.createdAt.toISOString(),
     })),
   }
@@ -265,14 +265,21 @@ export async function fetchBehaviorStats(days: number): Promise<BehaviorStats> {
     return diffSeconds > 0 ? diffSeconds : 0
   }
 
-  function maskEmail(email: string | null): string {
-    if (!email) {
+  function maskPhone(phone: string | null): string {
+    if (!phone) {
       return '-'
     }
-    const [local, domain] = email.split('@')
-    if (!domain) return email
-    const maskedLocal = local.length > 2 ? `${local.slice(0, 2)}****${local.slice(-1)}` : '****'
-    return `${maskedLocal}@${domain}`
+    const d = phone.replace(/\D/g, '')
+    if (d.length === 11) {
+      return `${d.slice(0, 3)}****${d.slice(-4)}`
+    }
+    if (d.length >= 7) {
+      return `${d.slice(0, 3)}****${d.slice(-2)}`
+    }
+    if (d.length > 0) {
+      return '***'
+    }
+    return '-'
   }
 
   const now = new Date()
@@ -311,7 +318,7 @@ export async function fetchBehaviorStats(days: number): Promise<BehaviorStats> {
   const userMap = new Map<
     string,
     {
-      email: string
+      phone: string
       sessionCount: number
       totalDuration: number
     }
@@ -361,7 +368,7 @@ export async function fetchBehaviorStats(days: number): Promise<BehaviorStats> {
     functionMap.set(functionName, aggregateFunction)
 
     const aggregateUser = userMap.get(userId) ?? {
-      email: log.email ?? '',
+      phone: log.phone ?? '',
       sessionCount: 0,
       totalDuration: 0,
     }
@@ -388,7 +395,7 @@ export async function fetchBehaviorStats(days: number): Promise<BehaviorStats> {
   const activeUsers = Array.from(userMap.entries())
     .map(([id, value]) => ({
       user_id: id,
-      email: maskEmail(value.email),
+      phone: maskPhone(value.phone),
       session_count: value.sessionCount,
       total_duration_seconds: Math.round(value.totalDuration),
       average_duration_seconds:
@@ -413,7 +420,7 @@ export async function fetchBehaviorStats(days: number): Promise<BehaviorStats> {
   const recentSessions = logs.slice(0, 10).map((log) => ({
     function_name: log.functionName?.trim() || INTERNAL_FUNCTION_LABEL,
     user_id: log.userId,
-    email: maskEmail(log.email),
+    phone: maskPhone(log.phone),
     start_time: log.startTime.toISOString(),
     end_time: log.endTime?.toISOString() || null,
     duration_seconds: Math.round(sanitizeDuration(log, now)),
@@ -444,18 +451,18 @@ export async function fetchLoginDurationStats(days: number): Promise<LoginDurati
 
   const loginLogs = await getLoginLogs(startDate)
 
-  const durationMap: Record<string, { minutes: number; email?: string | null }> = {}
+  const durationMap: Record<string, { minutes: number; phone?: string | null }> = {}
 
   for (const log of loginLogs) {
     const durationMinutes = await calculateSessionDuration(log.loginAt, log.userId, prisma)
 
     if (durationMinutes !== null) {
       if (!durationMap[log.userId]) {
-        durationMap[log.userId] = { minutes: 0, email: log.email }
+        durationMap[log.userId] = { minutes: 0, phone: log.phone }
       }
       durationMap[log.userId].minutes += durationMinutes
-      if (!durationMap[log.userId].email && log.email) {
-        durationMap[log.userId].email = log.email
+      if (!durationMap[log.userId].phone && log.phone) {
+        durationMap[log.userId].phone = log.phone
       }
     }
   }
@@ -463,7 +470,7 @@ export async function fetchLoginDurationStats(days: number): Promise<LoginDurati
   const items = Object.entries(durationMap)
     .map(([userId, data]) => ({
       user_id: userId,
-      email: data.email ?? null,
+      phone: data.phone ?? null,
       total_minutes: Math.round(data.minutes),
       total_hours: Math.round((data.minutes / 60) * 10) / 10,
     }))

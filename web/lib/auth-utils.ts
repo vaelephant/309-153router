@@ -1,15 +1,22 @@
 /**
  * 认证相关工具函数
- * 适配：邮箱登录、UUID 用户ID
+ * 适配：手机号登录、UUID 用户ID
  */
 import bcrypt from 'bcryptjs';
 
+/** 中国大陆手机号：11 位，1 开头 */
+const CN_MOBILE_REGEX = /^1[3-9]\d{9}$/
+
+/** 只保留数字，用于输入清洗 */
+export function normalizePhoneInput(raw: string): string {
+  return raw.replace(/\D/g, '')
+}
+
 /**
- * 验证邮箱格式
+ * 验证中国大陆手机号格式
  */
-export function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+export function validatePhone(phone: string): boolean {
+  return CN_MOBILE_REGEX.test(phone)
 }
 
 /**
@@ -31,12 +38,12 @@ export async function verifyPassword(
 
 /**
  * 生成简单的 Token（不依赖 JWT）
- * 使用 Base64 编码用户ID和邮箱 + 时间戳
+ * 使用 Base64 编码用户ID和手机号 + 时间戳
  */
-export function createSimpleToken(userId: string, email: string): string {
+export function createSimpleToken(userId: string, phone: string): string {
   const payload = {
     userId: userId,
-    email: email,
+    phone: phone,
     timestamp: Date.now(),
   };
   // 使用 Base64 编码（仅用于标识，不包含敏感信息）
@@ -46,12 +53,12 @@ export function createSimpleToken(userId: string, email: string): string {
 /**
  * 解析 Token（简单实现）
  */
-export function parseToken(token: string): { userId: string; email: string; timestamp: number } | null {
+export function parseToken(token: string): { userId: string; phone: string; timestamp: number } | null {
   try {
     const payload = JSON.parse(Buffer.from(token, 'base64').toString());
     return {
       userId: payload.userId,
-      email: payload.email,
+      phone: payload.phone ?? payload.email ?? '',
       timestamp: payload.timestamp,
     };
   } catch {

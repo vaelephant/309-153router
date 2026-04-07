@@ -115,8 +115,7 @@ async function sendDingTalkMessage(content: string): Promise<boolean> {
 
 /** 用户注册通知 */
 export function notifyUserRegister(
-  email: string,
-  name: string | null,
+  phone: string,
   inviteCode?: string | null,
   userAgent?: string | null,
   ipAddress?: string | null
@@ -124,8 +123,7 @@ export function notifyUserRegister(
   const lines = [
     `🔔 新用户注册通知`,
     ``,
-    `📧 邮箱：${email}`,
-    `👤 用户名：${name || email}`,
+    `📱 手机号：${phone}`,
     `⏰ 注册时间：${formatChinaTime()}`,
     `🎫 邀请码：${inviteCode || "无"}`,
   ]
@@ -140,16 +138,14 @@ export function notifyUserRegister(
 
 /** 用户登录通知 */
 export function notifyUserLogin(
-  email: string,
-  name: string | null,
+  phone: string,
   userAgent?: string | null,
   ipAddress?: string | null
 ): Promise<boolean> {
   const lines = [
     `🔔 用户登录通知`,
     ``,
-    `📧 邮箱：${email}`,
-    `👤 用户名：${name || email}`,
+    `📱 手机号：${phone}`,
     `⏰ 登录时间：${formatChinaTime()}`,
   ]
 

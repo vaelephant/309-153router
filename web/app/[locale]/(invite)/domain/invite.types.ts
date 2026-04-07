@@ -5,7 +5,7 @@ export * from '@/lib/types/invite'
 
 export interface HandleInviteCodeParams {
   newUserId: string
-  newUserEmail: string
+  newUserPhone: string
   inviteCodeStr: string
 }
 

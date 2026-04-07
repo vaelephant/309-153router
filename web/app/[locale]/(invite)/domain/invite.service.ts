@@ -119,7 +119,7 @@ export async function verifyInviteCode(code: string) {
   // 获取邀请人信息
   const inviter = await prisma.user.findUnique({
     where: { id: inviteCode.userId },
-    select: { email: true },
+    select: { phone: true },
   })
 
   return {
@@ -127,7 +127,7 @@ export async function verifyInviteCode(code: string) {
     valid: true,
     invite_code: {
       code: inviteCode.code,
-      inviter_email: inviter?.email || '',
+      inviter_phone: inviter?.phone || '',
       inviter_name: null,
       max_uses: inviteCode.maxUses >= 999999 ? null : inviteCode.maxUses,
       used_count: inviteCode.usedCount,
@@ -171,7 +171,7 @@ export async function getMyInvites(userId: string): Promise<InvitedUser[]> {
   return relations.map((rel) => ({
     id: rel.id,
     invitee_id: rel.inviteeId,
-    invitee_email: rel.invitee.email,
+    invitee_phone: rel.invitee.phone,
     invitee_name: null,
     invite_code: rel.inviteCode,
     used_at: rel.usedAt,
@@ -342,7 +342,7 @@ export async function handleInviteCodeOnRegister(
 ): Promise<HandleInviteCodeResult> {
   try {
     const code = params.inviteCodeStr.toUpperCase().trim()
-    console.log('[邀请码处理] 开始处理邀请码:', { code, newUserId: params.newUserId, newUserEmail: params.newUserEmail })
+    console.log('[邀请码处理] 开始处理邀请码:', { code, newUserId: params.newUserId, newUserPhone: params.newUserPhone })
 
     // 1. 验证邀请码
     const inviteCode = await findInviteCode(code)
@@ -404,7 +404,7 @@ export async function handleInviteCodeOnRegister(
           expiresAt: null,
           createdAt: now,
         })
-        console.log(`[邀请码处理] 创建奖励记录: 用户 ${inviterId} (邀请用户 ${params.newUserEmail})，待被邀请人首充后发放`)
+        console.log(`[邀请码处理] 创建奖励记录: 用户 ${inviterId} (邀请用户 ${params.newUserPhone})，待被邀请人首充后发放`)
       }
     } catch (err) {
       console.warn('创建邀请奖励记录失败:', err)

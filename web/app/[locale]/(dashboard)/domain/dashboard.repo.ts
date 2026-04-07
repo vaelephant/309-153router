@@ -56,14 +56,14 @@ export async function getActivityLogs(userId: string, limit: number = 20) {
  */
 export async function createBehaviorLog(data: {
   userId: string
-  email: string
+  phone: string
   functionName: string
   startTime: Date
 }) {
   return prisma.userBehaviorLog.create({
     data: {
       userId: data.userId,
-      email: data.email,
+      phone: data.phone,
       functionName: data.functionName,
       startTime: data.startTime,
     },

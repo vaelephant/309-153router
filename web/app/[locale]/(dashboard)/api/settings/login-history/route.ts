@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       take: 20,
       select: {
         id: true,
-        email: true,
+        phone: true,
         loginAt: true,
         ipAddress: true,
         userAgent: true,
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       data: logs.map(log => ({
         id: String(log.id),
-        email: log.email,
+        phone: log.phone,
         login_at: log.loginAt.toISOString(),
         ip_address: log.ipAddress,
         user_agent: log.userAgent,

@@ -1,3 +1,4 @@
+    Blocking waiting for file lock on package cache
 error: checksum for `hashbrown v0.15.5` changed between lock files
 
 this could be indicative of a few possible errors:

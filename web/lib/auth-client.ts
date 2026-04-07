@@ -14,13 +14,18 @@ export function getCurrentUserId(): string | null {
 }
 
 /**
- * 获取当前登录用户的邮箱
+ * 获取当前登录用户的手机号
  */
-export function getCurrentUserEmail(): string | null {
+export function getCurrentUserPhone(): string | null {
   if (typeof window === 'undefined') {
     return null
   }
-  return localStorage.getItem('email')
+  return localStorage.getItem('phone') ?? localStorage.getItem('email')
+}
+
+/** @deprecated 使用 getCurrentUserPhone */
+export function getCurrentUserEmail(): string | null {
+  return getCurrentUserPhone()
 }
 
 /**
@@ -45,12 +50,13 @@ export function isAuthenticated(): boolean {
 /**
  * 保存用户登录信息
  */
-export function saveUserAuth(userId: string, email: string, token: string, role?: string): void {
+export function saveUserAuth(userId: string, phone: string, token: string, role?: string): void {
   if (typeof window === 'undefined') {
     return
   }
   localStorage.setItem('user_id', userId)
-  localStorage.setItem('email', email)
+  localStorage.removeItem('email')
+  localStorage.setItem('phone', phone)
   localStorage.setItem('token', token)
   // 登录时始终写入 role，避免残留上一账号的角色；未返回时默认为 user
   localStorage.setItem('role', role ?? 'user')
@@ -94,6 +100,7 @@ export function clearUserAuth(): void {
   }
   localStorage.removeItem('user_id')
   localStorage.removeItem('email')
+  localStorage.removeItem('phone')
   localStorage.removeItem('token')
   localStorage.removeItem('role')
 }

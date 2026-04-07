@@ -9,9 +9,9 @@
 export async function trackEnter(functionName: string) {
   try {
     const userId = localStorage.getItem('user_id');
-    const email = localStorage.getItem('email');
+    const phone = localStorage.getItem('phone') || localStorage.getItem('email');
 
-    if (!userId || !email) {
+    if (!userId || !phone) {
       console.warn('用户未登录，无法记录行为');
       return;
     }
@@ -23,7 +23,7 @@ export async function trackEnter(functionName: string) {
       },
       body: JSON.stringify({
         user_id: userId,
-        email: email,
+        phone: phone,
         function_name: functionName,
         action: 'enter',
       }),
@@ -39,9 +39,9 @@ export async function trackEnter(functionName: string) {
 export async function trackLeave(functionName: string) {
   try {
     const userId = localStorage.getItem('user_id');
-    const email = localStorage.getItem('email');
+    const phone = localStorage.getItem('phone') || localStorage.getItem('email');
 
-    if (!userId || !email) {
+    if (!userId || !phone) {
       console.warn('用户未登录，无法记录行为');
       return;
     }
@@ -53,7 +53,7 @@ export async function trackLeave(functionName: string) {
       },
       body: JSON.stringify({
         user_id: userId,
-        email: email,
+        phone: phone,
         function_name: functionName,
         action: 'leave',
       }),

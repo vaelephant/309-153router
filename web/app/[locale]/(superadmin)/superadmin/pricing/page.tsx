@@ -7,24 +7,26 @@ import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadm
 import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
 import { PricingTable } from "@/app/[locale]/(superadmin)/components/pricing-table"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 export default function SuperadminPricingPage() {
+  const { locale } = useI18n()
   const [pricing, setPricing] = useState<ModelPricingItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/superadmin/models", { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/models`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data?.pricing) setPricing(json.data.pricing)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   const handleUpdate = (modelName: string, patch: { inputPrice?: number; outputPrice?: number; enabled?: boolean }) => {
-    return fetch(`/api/superadmin/pricing/${encodeURIComponent(modelName)}`, {
+    return fetch(`/${locale}/api/superadmin/pricing/${encodeURIComponent(modelName)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(patch),
@@ -46,7 +48,7 @@ export default function SuperadminPricingPage() {
   }
 
   const handleRename = (oldModelName: string, newModelName: string) => {
-    return fetch(`/api/superadmin/pricing/${encodeURIComponent(oldModelName)}`, {
+    return fetch(`/${locale}/api/superadmin/pricing/${encodeURIComponent(oldModelName)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({ newModelName }),

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Loader2 } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 
 type RewardRule = {
   id: number
@@ -37,11 +38,12 @@ function inviteCountLabel(count: number): string {
 }
 
 export default function SuperadminInviteRewardsPage() {
+  const { locale } = useI18n()
   const [rules, setRules] = useState<RewardRule[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchRules = () => {
-    fetch("/api/superadmin/invite-rewards", { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/invite-rewards`, { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data?.rules) {
@@ -60,7 +62,7 @@ export default function SuperadminInviteRewardsPage() {
   useEffect(() => {
     setLoading(true)
     fetchRules()
-  }, [])
+  }, [locale])
 
   if (loading) {
     return (
@@ -120,6 +122,7 @@ export default function SuperadminInviteRewardsPage() {
                       rules.map((rule) => (
                         <RewardRuleRow
                           key={rule.id}
+                          locale={locale}
                           rule={rule}
                           onSaved={(updated) => {
                             setRules((prev) =>
@@ -142,9 +145,11 @@ export default function SuperadminInviteRewardsPage() {
 }
 
 function RewardRuleRow({
+  locale,
   rule,
   onSaved,
 }: {
+  locale: string
   rule: RewardRule
   onSaved: (updated: Partial<RewardRule>) => void
 }) {
@@ -169,7 +174,7 @@ function RewardRuleRow({
     }
     setSaving(true)
     setMsg(null)
-    fetch("/api/superadmin/invite-rewards", {
+    fetch(`/${locale}/api/superadmin/invite-rewards`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({

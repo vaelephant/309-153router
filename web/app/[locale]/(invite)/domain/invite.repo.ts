@@ -188,7 +188,7 @@ export async function getUserInviteRelations(userId: string) {
       invitee: {
         select: {
           id: true,
-          email: true,
+          phone: true,
           createdAt: true,
         },
       },

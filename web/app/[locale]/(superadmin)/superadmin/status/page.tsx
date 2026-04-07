@@ -8,23 +8,25 @@ import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin
 import { Card, CardContent } from "@/components/ui/card"
 import { Activity, Wifi, WifiOff, Clock, CheckCircle, XCircle, HelpCircle } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { StatusOverview, ModelStatusItem } from "@/app/[locale]/(superadmin)/domain/superadmin.service"
 
 export default function SuperadminStatusPage() {
+  const { locale } = useI18n()
   const [data, setData] = useState<StatusOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(1)
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/superadmin/status?days=${days}`, { headers: getAuthHeaders() })
+    fetch(`/${locale}/api/superadmin/status?days=${days}`, { headers: getAuthHeaders() })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) setData(res.data)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [days])
+  }, [days, locale])
 
   return (
     <AuthGuard>

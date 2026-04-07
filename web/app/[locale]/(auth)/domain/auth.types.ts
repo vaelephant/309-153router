@@ -3,12 +3,12 @@
  */
 
 export interface LoginParams {
-  email: string
+  phone: string
   password: string
 }
 
 export interface RegisterParams {
-  email: string
+  phone: string
   password: string
   inviteCode?: string
 }
@@ -16,7 +16,7 @@ export interface RegisterParams {
 export interface LoginResult {
   success: true
   userId: string
-  email: string
+  phone: string
   token: string
   message: string
   role: string
@@ -25,7 +25,7 @@ export interface LoginResult {
 export interface RegisterResult {
   success: true
   userId: string
-  email: string
+  phone: string
   token: string
   message: string
   role: string
@@ -40,7 +40,7 @@ export type AuthResult<T> = T | AuthError
 
 export interface LoginLogData {
   userId: string
-  email: string
+  phone: string
   loginAt: Date
   ipAddress: string | null
   userAgent: string | null

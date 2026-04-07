@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
+        phone: true,
         role: true,
         createdAt: true,
       },
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       data: {
         id: user.id,
-        email: user.email,
+        phone: user.phone,
         role: user.role,
         created_at: user.createdAt.toISOString(),
         balance: balance ? Number(balance.balance) : 0,

@@ -170,12 +170,12 @@ export async function fetchActivityLogs(userId: string, limit: number = 20): Pro
  */
 export async function trackBehaviorEnter(params: {
   userId: string
-  email: string
+  phone: string
   functionName: string
 }) {
   await createBehaviorLog({
     userId: params.userId,
-    email: params.email,
+    phone: params.phone,
     functionName: params.functionName,
     startTime: new Date(),
   })

@@ -17,7 +17,7 @@ export interface InviteCode {
 export interface InvitedUser {
   id: number
   invitee_id: string
-  invitee_email: string
+  invitee_phone: string
   invitee_name: string | null
   invite_code: string
   used_at: string | null
@@ -65,7 +65,7 @@ export interface InviteCodeVerifyResult {
   detail?: string
   invite_code?: {
     code: string
-    inviter_email: string
+    inviter_phone: string
     inviter_name: string | null
     max_uses: number | null
     used_count: number

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { isSuperadmin, isAuthenticated, getAuthHeaders, saveUserAuth, getCurrentUserId, getCurrentUserEmail, getCurrentUserToken } from '@/lib/auth-client'
+import { isSuperadmin, isAuthenticated, getAuthHeaders, saveUserAuth, getCurrentUserId, getCurrentUserPhone, getCurrentUserToken } from '@/lib/auth-client'
 
 function getLocaleFromPathname(pathname: string): string {
   const segment = pathname?.split('/')[1]
@@ -29,10 +29,10 @@ export function SuperadminGuard({ children }: SuperadminGuardProps) {
           const json = await res.json()
           if (json?.ok && json?.data?.role === 'superadmin') {
             const userId = getCurrentUserId()
-            const email = getCurrentUserEmail()
+            const phone = getCurrentUserPhone()
             const token = getCurrentUserToken()
-            if (userId && email && token) {
-              saveUserAuth(userId, email, token, 'superadmin')
+            if (userId && phone && token) {
+              saveUserAuth(userId, phone, token, 'superadmin')
             }
             isSuperadminUser = true
           }

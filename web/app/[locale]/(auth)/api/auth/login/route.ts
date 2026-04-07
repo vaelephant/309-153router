@@ -7,9 +7,9 @@ import { loginUser } from '../../../domain/auth.service'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { email, password } = body
+  const { phone, password } = body
 
-  const result = await loginUser({ email, password }, request.headers)
+  const result = await loginUser({ phone, password }, request.headers)
 
   if (!result.success) {
     const detail = (result.detail || '').toLowerCase()
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     message: result.message,
     token: result.token,
     user_id: result.userId,
-    email: result.email,
+    phone: result.phone,
     role: result.role,
   })
 }

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
 import type { ModelUsageStats, ModelDailyStats } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
 
 interface ModelStatsChartProps {
@@ -20,6 +21,7 @@ interface ModelStatsChartProps {
 }
 
 export function ModelStatsChart({ days: initialDays = 7 }: ModelStatsChartProps) {
+  const { locale } = useI18n()
   const [days, setDays] = useState(initialDays)
   const [byModel, setByModel] = useState<ModelUsageStats[]>([])
   const [daily, setDaily] = useState<ModelDailyStats[]>([])
@@ -28,7 +30,7 @@ export function ModelStatsChart({ days: initialDays = 7 }: ModelStatsChartProps)
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`/api/superadmin/models/stats?days=${days}`, { headers: getAuthHeaders() })
+      const res = await fetch(`/${locale}/api/superadmin/models/stats?days=${days}`, { headers: getAuthHeaders() })
       const json = await res.json()
       if (json.success && json.data) {
         setByModel(json.data.byModel ?? [])
@@ -44,7 +46,7 @@ export function ModelStatsChart({ days: initialDays = 7 }: ModelStatsChartProps)
 
   useEffect(() => {
     fetchStats()
-  }, [days])
+  }, [days, locale])
 
   const handleRefresh = () => {
     setRefreshing(true)
