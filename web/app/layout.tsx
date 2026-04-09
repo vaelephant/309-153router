@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import SiteAnalytics from '@/components/site-analytics'
+import BaiduTongji from '@/components/baidu-tongji'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
@@ -109,6 +110,7 @@ export default function RootLayout({
           {children}
         </ThemeProvider>
         <Analytics />
+        <BaiduTongji />
         <SiteAnalytics />
       </body>
     </html>
