@@ -112,6 +112,7 @@ export default function RootLayout({
         <Analytics />
         <BaiduTongji />
         <SiteAnalytics />
+        <script defer src="http://tongjilian.rtfchain.com/tracker.js" data-site-id="tjl_ijs8xaPDFgOb"></script>
       </body>
     </html>
   )
