@@ -18,7 +18,11 @@ pub mod redis;
 pub mod types;
 
 // ── Postgres 操作 re-export ──────────────────────────────────────────────────
-pub use pg::{bill_in_tx, get_model_pricing, get_model_pricing_with_provider, get_user_balance, list_enabled_models, validate_key_from_db};
+pub use pg::{
+    bill_in_tx, get_model_pricing, get_model_pricing_with_provider, get_user_balance,
+    count_api_key_requests_this_month, insert_failure_log, list_enabled_models,
+    validate_key_from_db,
+};
 
 // ── Redis 缓存 re-export ─────────────────────────────────────────────────────
 pub use redis::{
@@ -31,4 +35,4 @@ pub use redis::{
 pub use redis::cache_del_key_meta;
 
 // ── 领域类型 re-export ───────────────────────────────────────────────────────
-pub use types::{ApiKeyMeta, BillArgs, ModelPricingInfo};
+pub use types::{ApiKeyMeta, BillArgs, FailureLogArgs, FailureLogStatus, ModelPricingInfo};

@@ -31,6 +31,27 @@ export async function getUsageStats(params: UsageStatsParams) {
 }
 
 /**
+ * 指定时间范围内的 usage_logs
+ */
+export async function getUsageLogsInRange(
+  userId: string,
+  from: Date,
+  to?: Date,
+  model?: string
+) {
+  const whereClause: Record<string, unknown> = {
+    userId,
+    createdAt: to ? { gte: from, lt: to } : { gte: from },
+  }
+  if (model) whereClause.model = model
+
+  return prisma.usageLog.findMany({
+    where: whereClause,
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+/**
  * 获取活动日志
  */
 export async function getActivityLogs(userId: string, limit: number = 20) {

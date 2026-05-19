@@ -8,19 +8,34 @@ export interface UsageStatsParams {
   model?: string
 }
 
+export interface UsageSummary {
+  total_requests: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_tokens: number
+  total_cost: number
+  avg_latency_ms: number
+  success_rate: number
+  error_count: number
+  rate_limited_count: number
+}
+
 export interface UsageStats {
   period: {
     days: number
     start_date: string
     end_date: string
   }
-  summary: {
-    total_requests: number
-    total_input_tokens: number
-    total_output_tokens: number
-    total_tokens: number
-    total_cost: number
-    avg_latency_ms: number
+  summary: UsageSummary
+  /** 今日 0 点至今 */
+  today: UsageSummary
+  /** 昨日全天 */
+  yesterday: UsageSummary
+  /** 今日相对昨日的变化率（百分比，latency/success_rate 为差值） */
+  today_changes: {
+    requests: number
+    cost: number
+    latency: number
     success_rate: number
   }
   model_breakdown: Record<string, {

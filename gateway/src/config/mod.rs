@@ -100,6 +100,22 @@ pub fn proxy_from_env() -> Option<reqwest::Proxy> {
     Some(proxy)
 }
 
+/// 为 reqwest 客户端应用代理策略，**仅**受 `PROXY_ENABLED` / `PROXY_URL` 控制。
+///
+/// - `PROXY_ENABLED=true` 且配置了 `PROXY_URL` → 使用自定义代理（内网/本机地址自动直连）
+/// - 否则 → `no_proxy()`，**同时禁用** Windows 系统代理与 `HTTP_PROXY` 等环境变量代理
+///
+/// 避免「未开 `PROXY_ENABLED` 却仍走系统代理」导致本机 `127.0.0.1` 自检返回 502。
+pub fn configure_reqwest_client_builder(
+    builder: reqwest::ClientBuilder,
+) -> reqwest::ClientBuilder {
+    if let Some(proxy) = proxy_from_env() {
+        builder.proxy(proxy)
+    } else {
+        builder.no_proxy()
+    }
+}
+
 // ─── AppConfig ────────────────────────────────────────────────────────────────
 
 /// 全局应用配置（只读，线程间共享）

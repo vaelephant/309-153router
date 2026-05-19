@@ -1,0 +1,139 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111F"/>
+      <stop offset="1" stop-color="#0B1730"/>
+    </linearGradient>
+
+    <linearGradient id="card" x1="0" y1="0" x2="320" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F1F3D"/>
+      <stop offset="1" stop-color="#13284E"/>
+    </linearGradient>
+
+    <linearGradient id="accent" x1="0" y1="0" x2="220" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#4F46E5"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#5EE7FF"/>
+    </marker>
+
+    <style>
+      .title { font: 700 34px Inter, Arial, sans-serif; fill: #F8FAFC; }
+      .subtitle { font: 500 16px Inter, Arial, sans-serif; fill: #9FB3C8; }
+      .boxTitle { font: 700 22px Inter, Arial, sans-serif; fill: #F8FAFC; }
+      .boxText { font: 500 15px Inter, Arial, sans-serif; fill: #B8C4D6; }
+      .small { font: 600 14px Inter, Arial, sans-serif; fill: #7DD3FC; }
+      .label { font: 700 16px Inter, Arial, sans-serif; fill: #E2E8F0; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="560" rx="28" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="60" y="62" class="title">OptRouter 智能模型选择流程</text>
+  <text x="60" y="92" class="subtitle">一个请求如何被分析、路由、调用并完成计费</text>
+
+  <!-- Step 1 -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="150" width="250" height="120" rx="22" fill="url(#card)" stroke="#223A66"/>
+  </g>
+  <circle cx="92" cy="182" r="16" fill="url(#accent)"/>
+  <text x="86" y="188" class="label">1</text>
+  <text x="122" y="188" class="boxTitle">用户请求进入</text>
+  <text x="82" y="220" class="boxText">• 调用 api.optrouter.com</text>
+  <text x="82" y="245" class="boxText">• 携带 model / messages / stream</text>
+
+  <!-- Step 2 -->
+  <g filter="url(#shadow)">
+    <rect x="360" y="150" width="290" height="120" rx="22" fill="url(#card)" stroke="#223A66"/>
+  </g>
+  <circle cx="392" cy="182" r="16" fill="url(#accent)"/>
+  <text x="386" y="188" class="label">2</text>
+  <text x="422" y="188" class="boxTitle">网关鉴权与预检查</text>
+  <text x="382" y="220" class="boxText">• 校验 API Key / 用户身份</text>
+  <text x="382" y="245" class="boxText">• 检查余额 / 配额 / 模型权限</text>
+
+  <!-- Step 3 -->
+  <g filter="url(#shadow)">
+    <rect x="700" y="135" width="360" height="150" rx="22" fill="url(#card)" stroke="#223A66"/>
+  </g>
+  <circle cx="732" cy="167" r="16" fill="url(#accent)"/>
+  <text x="726" y="173" class="label">3</text>
+  <text x="762" y="173" class="boxTitle">OptRouter 智能选择模型</text>
+  <text x="722" y="205" class="boxText">综合判断：</text>
+  <text x="742" y="232" class="boxText">• 用户指定模型 / auto 模式</text>
+  <text x="742" y="256" class="boxText">• 成本、速度、可用性、稳定性</text>
+  <text x="742" y="280" class="boxText">• 是否需要 fallback 备用模型</text>
+
+  <!-- Providers -->
+  <g filter="url(#shadow)">
+    <rect x="700" y="360" width="110" height="72" rx="18" fill="#0F1F3D" stroke="#264879"/>
+    <rect x="835" y="360" width="110" height="72" rx="18" fill="#0F1F3D" stroke="#264879"/>
+    <rect x="970" y="360" width="110" height="72" rx="18" fill="#0F1F3D" stroke="#264879"/>
+  </g>
+  <text x="730" y="392" class="boxTitle" style="font-size:18px;">OpenAI</text>
+  <text x="860" y="392" class="boxTitle" style="font-size:18px;">Claude</text>
+  <text x="996" y="392" class="boxTitle" style="font-size:18px;">Gemini</text>
+  <text x="718" y="415" class="small">Provider A</text>
+  <text x="853" y="415" class="small">Provider B</text>
+  <text x="988" y="415" class="small">Provider C</text>
+
+  <!-- Step 4 -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="345" width="300" height="140" rx="22" fill="url(#card)" stroke="#223A66"/>
+  </g>
+  <circle cx="92" cy="377" r="16" fill="url(#accent)"/>
+  <text x="86" y="383" class="label">4</text>
+  <text x="122" y="383" class="boxTitle">调用上游模型</text>
+  <text x="82" y="414" class="boxText">• 直连目标 Provider URL</text>
+  <text x="82" y="439" class="boxText">• 支持流式返回 / 非流式返回</text>
+  <text x="82" y="464" class="boxText">• 失败时自动切换 fallback</text>
+
+  <!-- Step 5 -->
+  <g filter="url(#shadow)">
+    <rect x="410" y="345" width="250" height="140" rx="22" fill="url(#card)" stroke="#223A66"/>
+  </g>
+  <circle cx="442" cy="377" r="16" fill="url(#accent)"/>
+  <text x="436" y="383" class="label">5</text>
+  <text x="472" y="383" class="boxTitle">记录 usage 与计费</text>
+  <text x="432" y="414" class="boxText">• 提取 prompt / completion tokens</text>
+  <text x="432" y="439" class="boxText">• 按模型价格计算 cost</text>
+  <text x="432" y="464" class="boxText">• 写 usage_logs / 扣余额</text>
+
+  <!-- Step 6 -->
+  <g filter="url(#shadow)">
+    <rect x="900" y="150" width="230" height="120" rx="22" fill="url(#accent)" opacity="0.14" stroke="#4FD1FF"/>
+  </g>
+  <text x="928" y="198" class="boxTitle">返回最终结果</text>
+  <text x="922" y="228" class="boxText">• 返回模型响应内容</text>
+  <text x="922" y="252" class="boxText">• 对用户保持统一 API 格式</text>
+
+  <!-- Main arrows -->
+  <path d="M310 210 C330 210, 338 210, 360 210" stroke="#5EE7FF" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M650 210 C675 210, 680 210, 700 210" stroke="#5EE7FF" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Smart router to providers -->
+  <path d="M820 285 C810 318, 780 332, 755 360" stroke="#5EE7FF" stroke-width="2.6" marker-end="url(#arrow)"/>
+  <path d="M880 285 C890 320, 890 330, 890 360" stroke="#5EE7FF" stroke-width="2.6" marker-end="url(#arrow)"/>
+  <path d="M945 285 C970 318, 995 332, 1025 360" stroke="#5EE7FF" stroke-width="2.6" marker-end="url(#arrow)"/>
+
+  <!-- Providers to upstream call -->
+  <path d="M700 396 C600 396, 470 396, 360 396" stroke="#5EE7FF" stroke-width="2.4" marker-end="url(#arrow)"/>
+
+  <!-- Upstream to billing -->
+  <path d="M360 430 C380 430, 390 430, 410 430" stroke="#5EE7FF" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- Billing to final response -->
+  <path d="M660 395 C785 395, 880 335, 980 270" stroke="#5EE7FF" stroke-width="2.8" marker-end="url(#arrow)"/>
+
+  <!-- Bottom note -->
+  <rect x="60" y="510" width="1080" height="1" fill="#1E355E"/>
+  <text x="60" y="538" class="subtitle">核心价值：统一 API 接入、多模型智能路由、自动 fallback、统一计费与监控</text>
+</svg>

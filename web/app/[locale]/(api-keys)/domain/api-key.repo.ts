@@ -15,6 +15,8 @@ export async function getUserApiKeys(userId: string) {
       name: true,
       status: true,
       rateLimitPerMin: true,
+      monthlyRequestQuota: true,
+      allowedModels: true,
       createdAt: true,
       lastUsedAt: true,
     },
@@ -28,4 +30,33 @@ export async function findApiKeyById(keyId: string, userId: string) {
   return prisma.apiKey.findFirst({
     where: { id: keyId, userId },
   })
+}
+
+/**
+ * 统计各 API Key 在指定时间后的请求次数
+ */
+export async function countRequestsByApiKeysSince(
+  userId: string,
+  keyIds: string[],
+  since: Date
+): Promise<Record<string, number>> {
+  if (keyIds.length === 0) return {}
+
+  const rows = await prisma.usageLog.groupBy({
+    by: ['apiKeyId'],
+    where: {
+      userId,
+      apiKeyId: { in: keyIds },
+      createdAt: { gte: since },
+    },
+    _count: { id: true },
+  })
+
+  const map: Record<string, number> = {}
+  for (const row of rows) {
+    if (row.apiKeyId) {
+      map[row.apiKeyId] = row._count.id
+    }
+  }
+  return map
 }

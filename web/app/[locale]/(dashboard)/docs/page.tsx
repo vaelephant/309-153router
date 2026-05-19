@@ -5,6 +5,7 @@ import { AuthGuard } from "../../(auth)/components/auth-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useI18n } from "@/lib/i18n-context"
+import { LocaleLink } from "@/components/locale-link"
 
 const GATEWAY_EXAMPLE = "http://localhost:9115"
 
@@ -34,6 +35,12 @@ export default function DocsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <p dangerouslySetInnerHTML={{ __html: t("docs.gatewayIntro") }} />
+                  <p className="text-muted-foreground">
+                    {t("docs.playgroundHint")}{" "}
+                    <LocaleLink href="/playground" className="text-primary hover:underline">
+                      {t("docs.playgroundLink")}
+                    </LocaleLink>
+                  </p>
                   <p className="text-muted-foreground">{t("docs.gatewayAddress")}</p>
                   <pre className="p-3 rounded-lg bg-muted text-xs overflow-x-auto border border-border">
 {`${GATEWAY_EXAMPLE}
@@ -156,6 +163,7 @@ curl -X POST ${GATEWAY_EXAMPLE}/v1/chat/completions \\
                         </tr>
                       </thead>
                       <tbody className="text-muted-foreground">
+                        <tr className="border-b border-border/50"><td className="py-2 px-3 font-mono">X-Request-Id</td><td>{t("docs.requestIdHeader")}</td></tr>
                         <tr className="border-b border-border/50"><td className="py-2 px-3 font-mono">X-Model-Latency-Ms</td><td>{t("docs.latencyHeader")}</td></tr>
                         <tr className="border-b border-border/50"><td className="py-2 px-3 font-mono">X-Cost-Yuan</td><td>{t("docs.costHeader")}</td></tr>
                       </tbody>

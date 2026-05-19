@@ -1,0 +1,72 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { DashboardLayout } from "@/app/[locale]/(dashboard)/components/dashboard-layout"
+import { AuthGuard } from "@/app/[locale]/(auth)/components/auth-guard"
+import { SuperadminGuard } from "@/app/[locale]/(superadmin)/components/superadmin-guard"
+import { SuperadminNav } from "@/app/[locale]/(superadmin)/components/superadmin-nav"
+import { ProviderList } from "@/app/[locale]/(superadmin)/components/provider-list"
+import { getAuthHeaders } from "@/lib/auth-client"
+import { useI18n } from "@/lib/i18n-context"
+import type { ProviderItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+import type { ModelPricingItem } from "@/app/[locale]/(superadmin)/domain/superadmin.types"
+
+export default function SuperadminProvidersPage() {
+  const { locale } = useI18n()
+  const [providers, setProviders] = useState<ProviderItem[]>([])
+  const [pricing, setPricing] = useState<ModelPricingItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = () => {
+    const headers = getAuthHeaders()
+    Promise.all([
+      fetch(`/${locale}/api/superadmin/providers`, { headers }).then((r) => r.json()),
+      fetch(`/${locale}/api/superadmin/models`, { headers }).then((r) => r.json()),
+    ])
+      .then(([provRes, modelsRes]) => {
+        if (provRes.success && provRes.data) setProviders(provRes.data)
+        if (modelsRes.success && modelsRes.data?.pricing) setPricing(modelsRes.data.pricing)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    fetchData()
+  }, [locale])
+
+  return (
+    <AuthGuard>
+      <SuperadminGuard>
+        <DashboardLayout>
+        <div className="p-6 space-y-6">
+          <SuperadminNav />
+          <div>
+            <h1 className="text-lg font-semibold mb-1">供应商管理</h1>
+            <p className="text-xs text-muted-foreground">
+              供应商列表及关联模型管理
+            </p>
+          </div>
+          <ProviderList
+            providers={providers}
+            pricing={pricing}
+            loading={loading}
+            onAdded={fetchData}
+            onModelUpdate={(modelName, patch) =>
+              fetch(`/${locale}/api/superadmin/pricing/${encodeURIComponent(modelName)}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                body: JSON.stringify(patch),
+              }).then((res) => {
+                if (!res.ok) return res.json().then((j: { detail?: string }) => { throw new Error(j.detail || "更新失败") })
+                fetchData()
+              })
+            }
+          />
+        </div>
+      </DashboardLayout>
+      </SuperadminGuard>
+    </AuthGuard>
+  )
+}

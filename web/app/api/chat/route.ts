@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authMiddleware, updateLastUsed } from '@/lib/auth'
-import { sendChatRequest, calculateCost } from '@/lib/gateway'
-import { prisma } from '@/lib/db'
+import { sendChatRequest } from '@/lib/gateway'
+
+/** 计费与 usage_logs 由网关 bill_in_tx 写入；此处不再重复 prisma.usageLog.create，避免双条记录与统计放大。 */
 
 interface ChatRequestBody {
   model: string
@@ -18,8 +19,6 @@ interface ChatRequestBody {
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-
   const auth = await authMiddleware(request)
   if (!auth.valid) {
     return NextResponse.json(
@@ -80,10 +79,7 @@ export async function POST(request: NextRequest) {
   if (body.stream) {
     const stream = await createStreamingResponse(
       gatewayResponse.body!,
-      auth.userId!,
-      auth.apiKeyId!,
-      body.model,
-      startTime
+      auth.apiKeyId
     )
 
     return new NextResponse(stream, {
@@ -97,33 +93,8 @@ export async function POST(request: NextRequest) {
 
   const responseData = await gatewayResponse.json()
 
-  const latencyMs = Date.now() - startTime
-  const usage = responseData.usage
-
-  if (usage) {
-    const cost = await calculateCost(
-      body.model,
-      usage.prompt_tokens,
-      usage.completion_tokens
-    )
-
-    await prisma.usageLog.create({
-      data: {
-        userId: auth.userId!,
-        apiKeyId: auth.apiKeyId,
-        model: body.model,
-        inputTokens: usage.prompt_tokens,
-        outputTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-        cost,
-        latencyMs,
-        status: 'success',
-      },
-    })
-
-    if (auth.apiKeyId) {
-      await updateLastUsed(auth.apiKeyId)
-    }
+  if (auth.apiKeyId && gatewayResponse.ok) {
+    await updateLastUsed(auth.apiKeyId)
   }
 
   return NextResponse.json(responseData, {
@@ -131,46 +102,18 @@ export async function POST(request: NextRequest) {
   })
 }
 
-function estimateTokens(messages: Array<{ content: string }>): number {
-  let totalChars = 0
-  for (const msg of messages) {
-    totalChars += msg.content.length
-  }
-  return Math.ceil(totalChars / 4)
-}
-
 async function createStreamingResponse(
   readableStream: ReadableStream<Uint8Array>,
-  userId: string,
-  apiKeyId: string | undefined,
-  model: string,
-  startTime: number
+  apiKeyId: string | undefined
 ): Promise<ReadableStream<Uint8Array>> {
-  const reader = readableStream.getReader()
   const decoder = new TextDecoder()
 
   const transformStream = new TransformStream({
     async transform(chunk, controller) {
-      const text = decoder.decode(chunk, { stream: true })
+      decoder.decode(chunk, { stream: true })
       controller.enqueue(chunk)
     },
     async flush() {
-      const latencyMs = Date.now() - startTime
-      
-      await prisma.usageLog.create({
-        data: {
-          userId,
-          apiKeyId,
-          model,
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          cost: 0,
-          latencyMs,
-          status: 'success',
-        },
-      }).catch(console.error)
-
       if (apiKeyId) {
         await updateLastUsed(apiKeyId).catch(console.error)
       }

@@ -8,6 +8,7 @@ use axum::{body::Body, extract::State, http::HeaderMap, http::StatusCode, respon
 use crate::{
     application::chat_service::handle_chat,
     error::AppResult,
+    metrics::{inc_chat_request, record_chat_outcome},
     protocol::ChatCompletionRequest,
     router::RouterState,
 };
@@ -17,7 +18,10 @@ pub async fn chat_completions(
     headers: HeaderMap,
     Json(request): Json<ChatCompletionRequest>,
 ) -> AppResult<Response> {
-    handle_chat(state, headers, request).await
+    inc_chat_request();
+    let result = handle_chat(state, headers, request).await;
+    record_chat_outcome(result.as_ref().err());
+    result
 }
 
 /// 调试接口：返回固定 OpenAI 格式 JSON，用于验证客户端能否正常解析响应。

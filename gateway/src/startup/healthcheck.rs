@@ -62,13 +62,9 @@ const API_CHECK_TIMEOUT_SECS: u64 = 2;
 
 /// 构建健康检查专用 HTTP client（复用全局代理配置，本地地址自动排除）
 fn build_probe_client(timeout_secs: u64) -> reqwest::Client {
-    let mut builder = reqwest::Client::builder()
+    let builder = reqwest::Client::builder()
         .timeout(Duration::from_secs(timeout_secs));
-
-    // 复用全局代理配置（PROXY_ENABLED / PROXY_URL），本地地址自动排除
-    if let Some(proxy) = crate::config::proxy_from_env() {
-        builder = builder.proxy(proxy);
-    }
+    let builder = crate::config::configure_reqwest_client_builder(builder);
 
     builder.build().unwrap_or_else(|e| {
         tracing::error!("Failed to build HTTP client for probe: {e}");
@@ -121,12 +117,7 @@ pub async fn check_upstreams(config: Arc<AppConfig>) -> Vec<UpstreamResult> {
         });
     }
 
-    let exit_on_fail = std::env::var("GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL")
-        .ok()
-        .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
-        .unwrap_or(false);
-
-    if any_fail && exit_on_fail {
+    if any_fail && startup_check_exit_on_fail() {
         tracing::error!("Startup check failed (GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL=1), exiting");
         std::process::exit(1);
     }
@@ -260,22 +251,45 @@ async fn probe_with_latency(client: &reqwest::Client, auth: &CheckAuth) -> (Chec
     (status, latency_ms)
 }
 
+fn startup_check_exit_on_fail() -> bool {
+    std::env::var("GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL")
+        .ok()
+        .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
+        .unwrap_or(false)
+}
+
 /// 服务已监听后，对本机 GET /health 做联通检查（带重试）。
+///
+/// 代理策略与全局一致（`PROXY_ENABLED`）；本机 127.0.0.1 在开启代理时也会直连。
+/// 仅当 `GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL=1` 时失败会退出进程（与 Provider 自检一致）。
 pub async fn check_api_reachable(port: u16) -> bool {
     let url = format!("http://127.0.0.1:{port}/health");
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(API_CHECK_TIMEOUT_SECS))
+    let builder = reqwest::Client::builder()
+        .timeout(Duration::from_secs(API_CHECK_TIMEOUT_SECS));
+    let client = crate::config::configure_reqwest_client_builder(builder)
         .build()
         .unwrap_or_else(|e| {
             tracing::error!("Failed to build HTTP client for API check: {e}");
             std::process::exit(1);
         });
 
+    // 给 tokio::spawn 的 axum 一点时间完成 listen
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
     for attempt in 1..=API_CHECK_RETRIES {
         match client.get(&url).send().await {
             Ok(resp) if resp.status().is_success() => return true,
             Ok(resp) => {
-                warn!(url = %url, status = %resp.status(), attempt, "API returned non-OK");
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                let body_preview = body.chars().take(200).collect::<String>();
+                warn!(
+                    url = %url,
+                    status = %status,
+                    body = %body_preview,
+                    attempt,
+                    "API returned non-OK"
+                );
             }
             Err(e) => {
                 warn!(url = %url, error = %e, attempt, "API unreachable");
@@ -287,7 +301,11 @@ pub async fn check_api_reachable(port: u16) -> bool {
     }
 
     tracing::error!(url = %url, "API self-check failed after {} attempts", API_CHECK_RETRIES);
-    std::process::exit(1);
+    if startup_check_exit_on_fail() {
+        tracing::error!("Startup check failed (GATEWAY_STARTUP_CHECK_EXIT_ON_FAIL=1), exiting");
+        std::process::exit(1);
+    }
+    false
 }
 
 /// 服务就绪后打印彩色启动摘要框。

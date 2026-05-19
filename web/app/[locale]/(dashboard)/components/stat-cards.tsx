@@ -16,18 +16,40 @@ interface Stats {
   statKey?: string
 }
 
+function formatChange(pct: number, isLatency = false): { text: string; trend: 'up' | 'down' } {
+  if (isLatency) {
+    const sign = pct >= 0 ? '+' : ''
+    return {
+      text: `${sign}${pct.toFixed(1)}%`,
+      trend: pct <= 0 ? 'down' : 'up',
+    }
+  }
+  if (Math.abs(pct) < 0.05) {
+    return { text: '—', trend: 'up' }
+  }
+  const sign = pct >= 0 ? '+' : ''
+  return {
+    text: `${sign}${pct.toFixed(1)}%`,
+    trend: pct >= 0 ? 'up' : 'down',
+  }
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.01 && cost > 0) return `¥${cost.toFixed(4)}`
+  return `¥${cost.toFixed(2)}`
+}
+
 export function StatCards() {
   const { t, locale } = useI18n()
   const [stats, setStats] = useState<Stats[]>([])
+  const [loading, setLoading] = useState(true)
 
   const getDefaultStats = (): Stats[] => [
-    { label: t("dashboard.requestsTotal"), value: '0', change: '0%', trend: 'up', icon: Zap, description: t("dashboard.pleaseLogin"), statKey: 'requests' },
-    { label: t("dashboard.costAmount"), value: '¥0.00', change: '0%', trend: 'up', icon: DollarSign, description: t("dashboard.pleaseLogin"), statKey: 'cost' },
-    { label: t("dashboard.avgLatency"), value: '0ms', change: '0%', trend: 'down', icon: Clock, description: t("dashboard.pleaseLogin"), statKey: 'latency' },
-    { label: t("dashboard.successRate"), value: '0%', change: '0%', trend: 'up', icon: Activity, description: t("dashboard.pleaseLogin"), statKey: 'success' },
+    { label: t("dashboard.requestsToday"), value: '0', change: '—', trend: 'up', icon: Zap, description: t("dashboard.vsYesterday"), statKey: 'requests' },
+    { label: t("dashboard.costToday"), value: '¥0.00', change: '—', trend: 'up', icon: DollarSign, description: t("dashboard.vsYesterday"), statKey: 'cost' },
+    { label: t("dashboard.avgLatency"), value: '0ms', change: '—', trend: 'down', icon: Clock, description: t("dashboard.todayAvg"), statKey: 'latency' },
+    { label: t("dashboard.successRate"), value: '0%', change: '—', trend: 'up', icon: Activity, description: t("dashboard.todayLabel"), statKey: 'success' },
   ]
-
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchStats() {
@@ -42,70 +64,72 @@ export function StatCards() {
         const response = await fetch(`/${locale}/api/usage?days=30`, {
           headers: { 'x-user-id': userId },
         })
-        
+
         if (!response.ok) {
-          console.error('API error:', response.status, response.statusText)
-          setStats(getDefaultStats())
-          setLoading(false)
-          return
-        }
-        
-        const data = await response.json()
-        
-        if (data.error) {
-          console.error('API returned error:', data.error)
           setStats(getDefaultStats())
           setLoading(false)
           return
         }
 
-        if (data.summary) {
-          setStats([
-            {
-              label: t("dashboard.requestsTotal"),
-              value: data.summary.total_requests.toLocaleString(),
-              change: '—',
-              trend: 'up',
-              icon: Zap,
-              description: t("dashboard.past30Days"),
-              statKey: 'requests',
-            },
-            {
-              label: t("dashboard.costAmount"),
-              value: data.summary.total_cost < 0.01 && data.summary.total_cost > 0
-                ? `¥${data.summary.total_cost.toFixed(4)}`
-                : `¥${data.summary.total_cost.toFixed(2)}`,
-              change: '—',
-              trend: 'up',
-              icon: DollarSign,
-              description: t("dashboard.thisMonth"),
-              statKey: 'cost',
-            },
-            {
-              label: t("dashboard.avgLatency"),
-              value: `${(data.summary.avg_latency_ms || 0).toLocaleString()}ms`,
-              change: '—',
-              trend: 'down',
-              icon: Clock,
-              description: t("dashboard.statPeriod"),
-              statKey: 'latency',
-            },
-            {
-              label: t("dashboard.successRate"),
-              value: `${Number(data.summary.success_rate || 0).toFixed(2)}%`,
-              change: '—',
-              trend: 'up',
-              icon: Activity,
-              description: t("dashboard.statPeriodShort"),
-              statKey: 'success',
-            },
-          ])
-        } else {
-          console.warn('API response missing summary:', data)
+        const data = await response.json()
+
+        if (data.error || !data.today) {
           setStats(getDefaultStats())
+          setLoading(false)
+          return
         }
-      } catch (error) {
-        console.error('Failed to fetch stats:', error)
+
+        const today = data.today
+        const changes = data.today_changes || {}
+
+        const reqCh = formatChange(changes.requests ?? 0)
+        const costCh = formatChange(changes.cost ?? 0)
+        const latCh = formatChange(changes.latency ?? 0, true)
+        const successDiff = changes.success_rate ?? 0
+        const successCh = {
+          text: Math.abs(successDiff) < 0.05 ? '—' : `${successDiff >= 0 ? '+' : ''}${successDiff.toFixed(1)}pp`,
+          trend: (successDiff >= 0 ? 'up' : 'down') as 'up' | 'down',
+        }
+
+        setStats([
+          {
+            label: t("dashboard.requestsToday"),
+            value: today.total_requests.toLocaleString(),
+            change: reqCh.text,
+            trend: reqCh.trend,
+            icon: Zap,
+            description: t("dashboard.vsYesterday"),
+            statKey: 'requests',
+          },
+          {
+            label: t("dashboard.costToday"),
+            value: formatCost(today.total_cost),
+            change: costCh.text,
+            trend: costCh.trend,
+            icon: DollarSign,
+            description: t("dashboard.vsYesterday"),
+            statKey: 'cost',
+          },
+          {
+            label: t("dashboard.avgLatency"),
+            value: `${(today.avg_latency_ms || 0).toLocaleString()}ms`,
+            change: latCh.text,
+            trend: latCh.trend,
+            icon: Clock,
+            description: t("dashboard.todayAvg"),
+            statKey: 'latency',
+          },
+          {
+            label: t("dashboard.successRate"),
+            value: `${Number(today.success_rate || 0).toFixed(1)}%`,
+            change: successCh.text,
+            trend: successCh.trend,
+            icon: Activity,
+            description: t("dashboard.todayLabel"),
+            statKey: 'success',
+          },
+        ])
+      } catch {
         setStats(getDefaultStats())
       } finally {
         setLoading(false)
@@ -113,7 +137,7 @@ export function StatCards() {
     }
 
     fetchStats()
-  }, [locale])
+  }, [locale, t])
 
   if (loading) {
     return (
@@ -153,16 +177,20 @@ export function StatCards() {
               <span
                 className={`inline-flex items-center text-xs font-medium ${
                   stat.statKey === 'latency'
-                    ? 'text-success'
+                    ? stat.trend === 'down'
+                      ? 'text-success'
+                      : 'text-chart-5'
                     : stat.trend === 'up'
                     ? 'text-success'
                     : 'text-chart-5'
                 }`}
               >
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight className="mr-0.5 size-3" />
-                ) : (
-                  <ArrowDownRight className="mr-0.5 size-3" />
+                {stat.change !== '—' && (
+                  stat.trend === 'up' ? (
+                    <ArrowUpRight className="mr-0.5 size-3" />
+                  ) : (
+                    <ArrowDownRight className="mr-0.5 size-3" />
+                  )
                 )}
                 {stat.change}
               </span>
@@ -176,4 +204,3 @@ export function StatCards() {
     </div>
   )
 }
-

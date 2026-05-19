@@ -48,7 +48,7 @@ export function SettingsApiPreferences() {
               .filter((k: Record<string, unknown>) => k.status === "active")
               .map((k: Record<string, unknown>) => ({
                 name: (k.masked_key as string) || t("dashboard.unnamed"),
-                rate_limit: k.quota_limit ? Math.round((k.quota_limit as number) / (60 * 24 * 30)) : 60,
+                rate_limit: (k.rate_limit_per_min as number) ?? (k.quota_limit as number) ?? 60,
                 status: k.status as string,
                 created_at: k.created_at as string,
               }))

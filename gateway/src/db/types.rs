@@ -28,6 +28,12 @@ pub struct ApiKeyMeta {
     pub status: String,
     /// 每分钟请求上限（网关保护层使用）
     pub rate_limit_per_min: i32,
+    /// 每月请求上限（`None` = 不限制）
+    #[serde(default)]
+    pub monthly_request_quota: Option<i32>,
+    /// 允许调用的模型（空 = 不限制）
+    #[serde(default)]
+    pub allowed_models: Vec<String>,
 }
 
 // ─── 模型定价 ─────────────────────────────────────────────────────────────────
@@ -67,4 +73,28 @@ pub struct BillArgs {
     pub saved_cost:    BigDecimal,
     /// 端到端延迟，写入 usage_logs.latency_ms
     pub latency_ms:    i32,
+    /// 智能路由决策摘要 JSON（可选）
+    pub route_reason:  Option<String>,
+}
+
+// ─── 失败/限流日志 ────────────────────────────────────────────────────────────
+
+/// 非成功请求的 `usage_logs.status`
+#[derive(Debug, Clone, Copy)]
+pub enum FailureLogStatus {
+    Error,
+    RateLimited,
+}
+
+/// 失败或限流时写入 `usage_logs`（不扣费、不写 transactions）
+pub struct FailureLogArgs {
+    pub user_id:         Uuid,
+    pub api_key_id:      Uuid,
+    pub model:           String,
+    pub requested_model: Option<String>,
+    pub provider:        Option<String>,
+    pub request_id:      Option<String>,
+    pub latency_ms:      i32,
+    pub status:          FailureLogStatus,
+    pub route_reason:    Option<String>,
 }

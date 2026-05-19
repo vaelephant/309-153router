@@ -64,6 +64,8 @@ pub struct AccountingStream {
     usage_tx: Option<tokio::sync::oneshot::Sender<Option<StreamUsage>>>,
     /// 当前已解析到的最新 usage（流结束时取走）
     usage:    Option<StreamUsage>,
+    /// 流式输出正文字符数（无 usage 时用于兜底估算 completion tokens）
+    completion_chars: usize,
 }
 
 #[allow(dead_code)]
@@ -76,6 +78,7 @@ impl AccountingStream {
             inner,
             usage_tx: Some(usage_tx),
             usage:    None,
+            completion_chars: 0,
         }
     }
 
@@ -108,6 +111,12 @@ impl AccountingStream {
                         });
                     }
                 }
+                if let Some(content) = v
+                    .pointer("/choices/0/delta/content")
+                    .and_then(|c| c.as_str())
+                {
+                    self.completion_chars += content.chars().count();
+                }
             }
         }
     }
@@ -129,10 +138,20 @@ impl Stream for AccountingStream {
                 Poll::Ready(Some(Ok(chunk)))
             }
 
-            // 流正常结束：发送截取到的 usage
+            // 流正常结束：发送截取到的 usage（无 usage 时用字符数粗估 completion）
             Poll::Ready(None) => {
                 if let Some(tx) = this.usage_tx.take() {
-                    let _ = tx.send(this.usage.take());
+                    let usage = this.usage.take().or_else(|| {
+                        if this.completion_chars > 0 {
+                            Some(StreamUsage {
+                                prompt_tokens: 0,
+                                completion_tokens: (this.completion_chars / 4).max(1) as i32,
+                            })
+                        } else {
+                            None
+                        }
+                    });
+                    let _ = tx.send(usage);
                 }
                 Poll::Ready(None)
             }

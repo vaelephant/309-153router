@@ -42,46 +42,61 @@ export function CTA() {
             >
               {t("cta.title")}
             </h2>
-            <p 
+            <p
               style={{
-                fontSize: '18px',
-                color: 'var(--color-text-body)',
-                maxWidth: '500px',
-                margin: '0 auto',
+                fontSize: "18px",
+                color: "var(--color-text-body)",
+                maxWidth: "560px",
+                margin: "0 auto",
               }}
             >
               {t("cta.subtitle")}
             </p>
-            <div 
+            <div
               className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row"
-              style={{ marginTop: 'var(--space-6)' }}
+              style={{ marginTop: "var(--space-6)" }}
             >
               <LocaleLink href="/login">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="ds-btn-primary"
                   style={{
-                    height: '48px',
-                    padding: '14px 28px',
+                    height: "48px",
+                    padding: "14px 28px",
                   }}
                 >
                   {t("cta.buttonStart")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </LocaleLink>
-              <Button 
-                size="lg" 
-                variant="outline"
-                style={{
-                  height: '48px',
-                  padding: '14px 28px',
-                  borderColor: 'var(--color-button-secondary-border)',
-                  color: 'var(--color-button-secondary-text)',
-                }}
-              >
-                {t("cta.buttonDocs")}
+              <Button size="lg" variant="outline" asChild>
+                <a
+                  href="#integration"
+                  style={{
+                    height: "48px",
+                    padding: "14px 28px",
+                    borderColor: "var(--color-button-secondary-border)",
+                    color: "var(--color-button-secondary-text)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {t("cta.buttonDocs")}
+                </a>
               </Button>
             </div>
+            <p
+              className="mt-6 text-center text-sm"
+              style={{ color: "var(--color-text-muted)", maxWidth: "480px", margin: "var(--space-6) auto 0" }}
+            >
+              <a
+                href="#contact"
+                className="font-medium underline-offset-4 hover:text-[var(--color-text-primary)] hover:underline"
+              >
+                {t("cta.enterpriseHint")}
+              </a>
+            </p>
           </div>
         </div>
       </div>
