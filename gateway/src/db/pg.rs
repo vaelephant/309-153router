@@ -37,14 +37,17 @@ pub async fn validate_key_from_db(
 ) -> AppResult<Option<ApiKeyMeta>> {
     #[derive(sqlx::FromRow)]
     struct Row {
-        id:                 Uuid,
-        user_id:            Uuid,
-        status:             String,
-        rate_limit_per_min: i32,
+        id:                     Uuid,
+        user_id:                Uuid,
+        status:                 String,
+        rate_limit_per_min:     i32,
+        monthly_request_quota:  Option<i32>,
+        allowed_models:         Option<Vec<String>>,
     }
 
     let row: Option<Row> = sqlx::query_as(
-        "SELECT id, user_id, status::text AS status, rate_limit_per_min \
+        "SELECT id, user_id, status::text AS status, rate_limit_per_min, \
+                monthly_request_quota, allowed_models \
          FROM api_keys \
          WHERE key_hash = $1",
     )
@@ -54,11 +57,31 @@ pub async fn validate_key_from_db(
     .map_err(|e| AppError::Internal(format!("db validate_key: {e}")))?;
 
     Ok(row.map(|r| ApiKeyMeta {
-        api_key_id:         r.id,
-        user_id:            r.user_id,
-        status:             r.status,
-        rate_limit_per_min: r.rate_limit_per_min,
+        api_key_id:             r.id,
+        user_id:                r.user_id,
+        status:                 r.status,
+        rate_limit_per_min:     r.rate_limit_per_min,
+        monthly_request_quota:  r.monthly_request_quota,
+        allowed_models:         r.allowed_models.unwrap_or_default(),
     }))
+}
+
+/// 统计 API Key 本月已产生的请求数（含 success / error / rate_limited）。
+pub async fn count_api_key_requests_this_month(
+    pool:       &PgPool,
+    api_key_id: Uuid,
+) -> AppResult<i64> {
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*)::bigint FROM usage_logs \
+         WHERE api_key_id = $1 \
+           AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'UTC')",
+    )
+    .bind(api_key_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("count monthly key usage: {e}")))?;
+
+    Ok(row.0)
 }
 
 // ─── 模型定价 ─────────────────────────────────────────────────────────────────
@@ -248,9 +271,9 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs) -> AppResult<()> {
     // ── 2. 写 usage_logs（含 requested_model, provider, request_id, saved_cost）
     sqlx::query(
         "INSERT INTO usage_logs \
-            (user_id, api_key_id, model, requested_model, provider, request_id, \
+            (user_id, api_key_id, model, requested_model, provider, request_id, route_reason, \
              input_tokens, output_tokens, total_tokens, cost, saved_cost, latency_ms, status) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'success'::\"UsageStatus\")",
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'success'::\"UsageStatus\")",
     )
     .bind(args.user_id)
     .bind(args.api_key_id)
@@ -258,6 +281,7 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs) -> AppResult<()> {
     .bind(args.requested_model.as_deref())
     .bind(args.provider.as_deref())
     .bind(args.request_id.as_deref())
+    .bind(args.route_reason.as_deref())
     .bind(args.input_tokens)
     .bind(args.output_tokens)
     .bind(args.total_tokens)
@@ -295,6 +319,37 @@ pub async fn bill_in_tx(pool: &PgPool, args: BillArgs) -> AppResult<()> {
         .bind(&payload)
         .execute(pool)
         .await;  // 失败只记录，不影响主流程
+
+    Ok(())
+}
+
+// ─── 失败/限流日志（不扣费）────────────────────────────────────────────────────
+
+/// 写入 `usage_logs`，`status` 为 `error` 或 `rate_limited`，`cost=0`，不写 `transactions`。
+pub async fn insert_failure_log(pool: &PgPool, args: crate::db::FailureLogArgs) -> AppResult<()> {
+    let status_sql = match args.status {
+        crate::db::FailureLogStatus::Error => "error",
+        crate::db::FailureLogStatus::RateLimited => "rate_limited",
+    };
+
+    sqlx::query(
+        "INSERT INTO usage_logs \
+            (user_id, api_key_id, model, requested_model, provider, request_id, route_reason, \
+             input_tokens, output_tokens, total_tokens, cost, saved_cost, latency_ms, status) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, 0, 0, 0, $8, $9::\"UsageStatus\")",
+    )
+    .bind(args.user_id)
+    .bind(args.api_key_id)
+    .bind(&args.model)
+    .bind(args.requested_model.as_deref())
+    .bind(args.provider.as_deref())
+    .bind(args.request_id.as_deref())
+    .bind(args.route_reason.as_deref())
+    .bind(args.latency_ms)
+    .bind(status_sql)
+    .execute(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("insert failure usage_log: {e}")))?;
 
     Ok(())
 }

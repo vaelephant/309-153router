@@ -8,7 +8,10 @@ import { prisma } from '@/lib/db'
 export async function GET() {
   try {
     const models = await prisma.modelPricing.findMany({
-      where: { enabled: true },
+      where: {
+        enabled: true,
+        is_virtual: { not: true },
+      },
       orderBy: [{ provider: 'asc' }, { modelName: 'asc' }],
       select: {
         modelName: true,
@@ -18,10 +21,10 @@ export async function GET() {
         maxTokens: true,
         description: true,
         enabled: true,
+        tier: true,
       },
     })
 
-    // 转换为前端需要的格式
     const result = models.map((m) => ({
       name: m.modelName,
       provider: m.provider,
@@ -30,6 +33,7 @@ export async function GET() {
       maxTokens: m.maxTokens,
       description: m.description,
       enabled: m.enabled,
+      tier: m.tier,
     }))
 
     return NextResponse.json({ models: result })

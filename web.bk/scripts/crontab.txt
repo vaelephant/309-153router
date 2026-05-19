@@ -1,0 +1,13 @@
+# 网站访问统计定时任务配置示例
+# 
+# 使用方法：
+# 1. 编辑 crontab: crontab -e
+# 2. 复制下面的配置（根据实际情况修改路径）
+# 3. 保存并退出
+
+# 每天早上 9 点运行统计报告脚本
+# 注意：请将 /path/to/your/project/web 替换为实际的 web 目录路径
+0 9 * * * cd /path/to/your/project/web && /usr/bin/python3 scripts/webanalytics.py >> /var/log/webanalytics.log 2>&1
+
+# 如果需要使用虚拟环境，可以这样配置：
+# 0 9 * * * cd /path/to/your/project/web && /path/to/venv/bin/python3 scripts/webanalytics.py >> /var/log/webanalytics.log 2>&1

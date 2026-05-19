@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const days = parseInt(searchParams.get('days') || '30', 10)
   const model = searchParams.get('model') || undefined
+  const apiKeyId = searchParams.get('apiKeyId') || undefined
   const page = parseInt(searchParams.get('page') || '1', 10)
   const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
   const status = searchParams.get('status') || undefined
-  const section = searchParams.get('section') || 'all' // all | overview | trend | models | logs | tokens | savings
+  const section = searchParams.get('section') || 'all' // all | overview | trend | models | api_keys | logs | tokens | savings
 
   if (days < 1 || days > 365) {
     return NextResponse.json(
@@ -27,6 +28,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: { message: 'Please login', type: 'authentication_error' } },
       { status: 401 }
+    )
+  }
+
+  if (apiKeyId && !isValidUUID(apiKeyId)) {
+    return NextResponse.json(
+      { error: { message: 'Invalid apiKeyId', type: 'invalid_request_error' } },
+      { status: 400 }
+    )
+  }
+
+  const validStatuses = ['success', 'error', 'rate_limited'] as const
+  if (status && !validStatuses.includes(status as (typeof validStatuses)[number])) {
+    return NextResponse.json(
+      { error: { message: 'Invalid status parameter', type: 'invalid_request_error' } },
+      { status: 400 }
     )
   }
 
@@ -43,6 +59,7 @@ export async function GET(request: NextRequest) {
       createdAt: { gte: startDate },
     }
     if (model) whereClause.model = model
+    if (apiKeyId) whereClause.apiKeyId = apiKeyId
     if (status) whereClause.status = status
 
     const prevWhereClause: Record<string, unknown> = {
@@ -50,6 +67,7 @@ export async function GET(request: NextRequest) {
       createdAt: { gte: prevStartDate, lt: startDate },
     }
     if (model) prevWhereClause.model = model
+    if (apiKeyId) prevWhereClause.apiKeyId = apiKeyId
 
     const result: Record<string, unknown> = {}
 
@@ -61,13 +79,16 @@ export async function GET(request: NextRequest) {
       ])
 
       const calcSummary = (logs: typeof currentLogs) => {
-        let inputTokens = 0, outputTokens = 0, cost = 0, latencySum = 0, latencyCount = 0, successCount = 0, savedCost = 0
+        let inputTokens = 0, outputTokens = 0, cost = 0, latencySum = 0, latencyCount = 0
+        let successCount = 0, errorCount = 0, rateLimitedCount = 0, savedCost = 0
         for (const log of logs) {
           inputTokens += log.inputTokens
           outputTokens += log.outputTokens
           cost += Number(log.cost)
           savedCost += Number(log.saved_cost || 0)
           if (log.status === 'success') successCount++
+          else if (log.status === 'error') errorCount++
+          else if (log.status === 'rate_limited') rateLimitedCount++
           if (typeof log.latencyMs === 'number') { latencySum += log.latencyMs; latencyCount++ }
         }
         return {
@@ -79,6 +100,8 @@ export async function GET(request: NextRequest) {
           total_saved_cost: savedCost,
           avg_latency_ms: latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0,
           success_rate: logs.length > 0 ? (successCount / logs.length) * 100 : 0,
+          error_count: errorCount,
+          rate_limited_count: rateLimitedCount,
         }
       }
 
@@ -166,6 +189,61 @@ export async function GET(request: NextRequest) {
       result.models = models
     }
 
+    // ==================== 按 API Key 排行 ====================
+    if (section === 'all' || section === 'api_keys') {
+      const logs = await prisma.usageLog.findMany({
+        where: whereClause,
+        select: {
+          apiKeyId: true,
+          inputTokens: true,
+          outputTokens: true,
+          cost: true,
+          latencyMs: true,
+        },
+      })
+
+      const keyAgg: Record<string, { requests: number; tokens: number; cost: number; latency_sum: number; latency_count: number }> = {}
+      for (const log of logs) {
+        const key = log.apiKeyId ?? '_unknown'
+        if (!keyAgg[key]) {
+          keyAgg[key] = { requests: 0, tokens: 0, cost: 0, latency_sum: 0, latency_count: 0 }
+        }
+        keyAgg[key].requests++
+        keyAgg[key].tokens += log.inputTokens + log.outputTokens
+        keyAgg[key].cost += Number(log.cost)
+        if (typeof log.latencyMs === 'number') {
+          keyAgg[key].latency_sum += log.latencyMs
+          keyAgg[key].latency_count++
+        }
+      }
+
+      const keyIds = Object.keys(keyAgg).filter((k) => k !== '_unknown')
+      const apiKeys = keyIds.length > 0
+        ? await prisma.apiKey.findMany({
+            where: { userId, id: { in: keyIds } },
+            select: { id: true, name: true },
+          })
+        : []
+      const nameById = new Map(apiKeys.map((k) => [k.id, k.name]))
+
+      const totalRequests = logs.length
+      const api_keys = Object.entries(keyAgg)
+        .map(([id, data]) => ({
+          id: id === '_unknown' ? null : id,
+          label: id === '_unknown'
+            ? '—'
+            : (nameById.get(id) || `Key ${id.slice(0, 8)}…`),
+          requests: data.requests,
+          tokens: data.tokens,
+          cost: data.cost,
+          avg_latency: data.latency_count > 0 ? Math.round(data.latency_sum / data.latency_count) : 0,
+          percentage: totalRequests > 0 ? (data.requests / totalRequests) * 100 : 0,
+        }))
+        .sort((a, b) => b.requests - a.requests)
+
+      result.api_keys = api_keys
+    }
+
     // ==================== 请求日志明细（分页） ====================
     if (section === 'all' || section === 'logs') {
       const [total, logs] = await Promise.all([
@@ -188,6 +266,8 @@ export async function GET(request: NextRequest) {
             status: true,
             createdAt: true,
             saved_cost: true,
+            requestId: true,
+            routeReason: true,
           },
         }),
       ])
@@ -195,6 +275,8 @@ export async function GET(request: NextRequest) {
       result.logs = {
         items: logs.map(log => ({
           id: String(log.id),
+          request_id: log.requestId,
+          route_reason: log.routeReason,
           model: log.model,
           requested_model: log.requestedModel,
           provider: log.provider,

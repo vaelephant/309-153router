@@ -42,6 +42,14 @@ pub mod startup;
 
 pub use error::{AppError, AppResult};
 
+async fn http_metrics_middleware(
+    request: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    metrics::inc_http_request();
+    next.run(request).await
+}
+
 // ─── 公开构建函数（供测试、集成测试、基准测试使用）────────────────────────────
 
 use std::net::SocketAddr;
@@ -61,8 +69,10 @@ pub fn build_app(state: router::RouterState) -> Router {
         .route("/v1/chat/completions",       post(api::chat::chat_completions))
         .route("/v1/usage",                  get(api::usage::get_usage_stats))
         .route("/v1/admin/config/reload",    post(api::admin::reload_config))
+        .route("/metrics",                   get(api::metrics::prometheus_metrics))
         .route("/debug/echo",                post(api::chat::debug_echo).get(api::chat::debug_echo))
         .with_state(state)
+        .layer(axum::middleware::from_fn(http_metrics_middleware))
         .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http())
 }

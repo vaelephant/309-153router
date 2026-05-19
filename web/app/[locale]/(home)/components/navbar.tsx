@@ -11,7 +11,9 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useI18n()
   const navLinks = [
+    { href: "#pain-points", label: t("nav.solutions") },
     { href: "#features", label: t("nav.features") },
+    { href: "#enterprise", label: t("nav.enterpriseNav") },
     { href: "#integration", label: t("nav.integration") },
     { href: "#testimonials", label: t("nav.testimonials") },
     { href: "#faq", label: t("nav.faq") },

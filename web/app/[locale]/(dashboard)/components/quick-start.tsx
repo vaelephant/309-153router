@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Check, Copy } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useI18n } from "@/lib/i18n-context"
+import { LocaleLink } from "@/components/locale-link"
 
 const codeSnippets: Record<string, string> = {
   curl: `curl https://api.optrouter.com/v1/chat/completions \\
@@ -106,6 +107,16 @@ export function QuickStart() {
             </TabsContent>
           ))}
         </Tabs>
+        <p className="text-xs text-muted-foreground mt-4">
+          {t("dashboard.quickStartMore")}{" "}
+          <LocaleLink href="/docs" className="text-primary hover:underline">
+            {t("dashboard.viewDocs")}
+          </LocaleLink>
+          {" · "}
+          <LocaleLink href="/playground" className="text-primary hover:underline">
+            {t("dashboard.tryPlayground")}
+          </LocaleLink>
+        </p>
       </CardContent>
     </Card>
   )

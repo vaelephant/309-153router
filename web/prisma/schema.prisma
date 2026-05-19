@@ -47,6 +47,10 @@ model ApiKey {
   status          ApiKeyStatus @default(active)
   /// 每分钟请求限制（防滥用）
   rateLimitPerMin Int          @default(60) @map("rate_limit_per_min")
+  /// 每月请求上限（null = 不限制）
+  monthlyRequestQuota Int?     @map("monthly_request_quota")
+  /// 允许调用的模型列表（空数组 = 不限制）
+  allowedModels   String[]     @default([]) @map("allowed_models")
   /// 创建时间
   createdAt       DateTime     @default(now()) @map("created_at")
   /// 最后使用时间
@@ -140,6 +144,8 @@ model UsageLog {
   provider       String?
   /// 请求追踪 ID（便于对账与排查）
   requestId      String?      @map("request_id")
+  /// 智能路由决策摘要（JSON，tier / reason / confidence）
+  routeReason    String?      @map("route_reason") @db.VarChar(512)
   saved_cost     Decimal?     @default(0) @db.Decimal(10, 6)
   apiKey         ApiKey?      @relation(fields: [apiKeyId], references: [id])
   pricing        ModelPricing @relation(fields: [model], references: [modelName])

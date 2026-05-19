@@ -3,6 +3,7 @@
  */
 import {
   getUsageStats,
+  getUsageLogsInRange,
   getActivityLogs,
   createBehaviorLog,
   findLastBehaviorLog,
@@ -11,7 +12,50 @@ import {
   getUserBalance,
   getCurrentPeriodUsage,
 } from './dashboard.repo'
-import type { UsageStatsParams, UsageStats, ActivityLog, PlanInfo } from './dashboard.types'
+import type { UsageStatsParams, UsageStats, UsageSummary, ActivityLog, PlanInfo } from './dashboard.types'
+
+function calcSummaryFromLogs(
+  logs: Awaited<ReturnType<typeof getUsageStats>>
+): UsageSummary {
+  let inputTokens = 0
+  let outputTokens = 0
+  let cost = 0
+  let latencySum = 0
+  let latencyCount = 0
+  let successCount = 0
+  let errorCount = 0
+  let rateLimitedCount = 0
+
+  for (const log of logs) {
+    inputTokens += log.inputTokens
+    outputTokens += log.outputTokens
+    cost += Number(log.cost)
+    if (log.status === 'success') successCount++
+    else if (log.status === 'error') errorCount++
+    else if (log.status === 'rate_limited') rateLimitedCount++
+    if (typeof log.latencyMs === 'number') {
+      latencySum += log.latencyMs
+      latencyCount++
+    }
+  }
+
+  return {
+    total_requests: logs.length,
+    total_input_tokens: inputTokens,
+    total_output_tokens: outputTokens,
+    total_tokens: inputTokens + outputTokens,
+    total_cost: cost,
+    avg_latency_ms: latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0,
+    success_rate: logs.length > 0 ? (successCount / logs.length) * 100 : 0,
+    error_count: errorCount,
+    rate_limited_count: rateLimitedCount,
+  }
+}
+
+function calcChangePercent(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0
+  return ((current - previous) / previous) * 100
+}
 
 /**
  * 格式化为绝对时间到秒（用于最近请求等展示）
@@ -53,52 +97,30 @@ function formatTimeAgo(date: Date): string {
  * 获取使用统计
  */
 export async function fetchUsageStats(params: UsageStatsParams): Promise<UsageStats> {
-  const usageLogs = await getUsageStats(params)
-
-  // 调试日志：检查查询到的数据
-  console.log(`[fetchUsageStats] userId=${params.userId}, days=${params.days}, found ${usageLogs.length} logs`)
-  if (usageLogs.length > 0) {
-    console.log(`[fetchUsageStats] sample log:`, {
-      id: usageLogs[0].id,
-      model: usageLogs[0].model,
-      inputTokens: usageLogs[0].inputTokens,
-      outputTokens: usageLogs[0].outputTokens,
-      cost: usageLogs[0].cost,
-      createdAt: usageLogs[0].createdAt,
-    })
-  }
-
+  const now = new Date()
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - params.days)
 
-  let totalInputTokens = 0
-  let totalOutputTokens = 0
-  let totalCost = 0
-  let latencySum = 0
-  let latencyCount = 0
-  let successCount = 0
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+  const yesterdayStart = new Date(todayStart)
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+
+  const [usageLogs, todayLogs, yesterdayLogs] = await Promise.all([
+    getUsageStats(params),
+    getUsageLogsInRange(params.userId, todayStart, undefined, params.model),
+    getUsageLogsInRange(params.userId, yesterdayStart, todayStart, params.model),
+  ])
+
+  const summary = calcSummaryFromLogs(usageLogs)
+  const today = calcSummaryFromLogs(todayLogs)
+  const yesterday = calcSummaryFromLogs(yesterdayLogs)
+
   const modelBreakdown: Record<string, { tokens: number; cost: number; requests: number }> = {}
-
   for (const log of usageLogs) {
-    totalInputTokens += log.inputTokens
-    totalOutputTokens += log.outputTokens
-    totalCost += Number(log.cost)
-
-    if (log.status === 'success') {
-      successCount += 1
-    }
-    if (typeof log.latencyMs === 'number') {
-      latencySum += log.latencyMs
-      latencyCount += 1
-    }
-
     const modelKey = log.model
     if (!modelBreakdown[modelKey]) {
-      modelBreakdown[modelKey] = {
-        tokens: 0,
-        cost: 0,
-        requests: 0,
-      }
+      modelBreakdown[modelKey] = { tokens: 0, cost: 0, requests: 0 }
     }
     modelBreakdown[modelKey].tokens += log.inputTokens + log.outputTokens
     modelBreakdown[modelKey].cost += Number(log.cost)
@@ -120,17 +142,16 @@ export async function fetchUsageStats(params: UsageStatsParams): Promise<UsageSt
     period: {
       days: params.days,
       start_date: startDate.toISOString(),
-      end_date: new Date().toISOString(),
+      end_date: now.toISOString(),
     },
-    summary: {
-      total_requests: usageLogs.length,
-      total_input_tokens: totalInputTokens,
-      total_output_tokens: totalOutputTokens,
-      total_tokens: totalInputTokens + totalOutputTokens,
-      total_cost: totalCost,
-      avg_latency_ms: latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0,
-      // success_rate: 0~100（百分比）
-      success_rate: usageLogs.length > 0 ? (successCount / usageLogs.length) * 100 : 0,
+    summary,
+    today,
+    yesterday,
+    today_changes: {
+      requests: calcChangePercent(today.total_requests, yesterday.total_requests),
+      cost: calcChangePercent(today.total_cost, yesterday.total_cost),
+      latency: calcChangePercent(today.avg_latency_ms, yesterday.avg_latency_ms),
+      success_rate: today.success_rate - yesterday.success_rate,
     },
     model_breakdown: modelBreakdown,
     daily_usage: dailyUsage,

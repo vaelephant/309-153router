@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword, validatePhone, normalizePhoneInput, creat
 import {
   findUserByPhone,
   checkPhoneExists,
-  createUser,
+  createUserWithWelcomeCredit,
   updateUserLastLogin,
   createLoginLog,
 } from './auth.repo'
@@ -18,6 +18,8 @@ import type {
   LoginLogData,
 } from './auth.types'
 import { notifyUserRegister, notifyUserLogin } from '@/lib/dingtalk'
+
+const REGISTER_WELCOME_CREDIT = 5
 
 /**
  * 提取 IP 地址（从 Request Headers）
@@ -156,11 +158,11 @@ export async function registerUser(
     }
 
     const passwordHash = await hashPassword(params.password)
-    const user = await createUser({
+    const user = await createUserWithWelcomeCredit({
       phone: normalized,
       password: passwordHash,
       role: 'user',
-    })
+    }, REGISTER_WELCOME_CREDIT)
 
     if (params.inviteCode && onInviteCodeProcess) {
       try {

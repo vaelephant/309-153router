@@ -69,14 +69,10 @@ impl RouterState {
         let config = Arc::new(AppConfig::from_env_with_toml(toml));
 
         let http_client = {
-            let mut builder = reqwest::Client::builder()
+            let builder = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(config.providers.timeout_secs))
                 .pool_max_idle_per_host(config.providers.pool_max_idle);
-
-            // 代理配置：PROXY_ENABLED=true + PROXY_URL → 外部 Provider 走代理，本地服务排除
-            if let Some(proxy) = crate::config::proxy_from_env() {
-                builder = builder.proxy(proxy);
-            }
+            let builder = crate::config::configure_reqwest_client_builder(builder);
 
             builder.build().expect("failed to build reqwest client")
         };

@@ -96,7 +96,9 @@ export function generateApiKey(): string {
 export async function createApiKey(
   userId: string,
   name?: string,
-  rateLimitPerMin: number = 60
+  rateLimitPerMin: number = 60,
+  monthlyRequestQuota?: number | null,
+  allowedModels?: string[]
 ) {
   const key = generateApiKey()
   const keyHash = hashKey(key)
@@ -107,6 +109,8 @@ export async function createApiKey(
       keyHash,
       name,
       rateLimitPerMin,
+      monthlyRequestQuota: monthlyRequestQuota ?? null,
+      allowedModels: allowedModels ?? [],
       status: 'active',
     },
   })

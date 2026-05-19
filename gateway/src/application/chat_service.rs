@@ -17,7 +17,10 @@ use tracing::{error, info, warn};
 
 use crate::{
     application::auth_service::authenticate,
-    db::{self, BillArgs, ModelPricingInfo, get_session_summary, set_session_summary},
+    db::{
+        self, BillArgs, FailureLogArgs, FailureLogStatus, ModelPricingInfo,
+        get_session_summary, set_session_summary,
+    },
     error::{AppError, AppResult},
     metrics::{compute_cost, token_counter::compute_savings},
     protocol::{ChatCompletionRequest, ChatCompletionResponse, ChatMessage, MessageRole},
@@ -25,6 +28,110 @@ use crate::{
     proxy::{AccountingStream, StreamUsage},
     router::{ProviderType, RouteInfo, RouterState, RequestProfile, IntelligentRouteResult, RoutingDecision, ModelTier},
 };
+
+/// 从 `x-request-id` 透传，否则生成新 UUID（写入 usage_logs.request_id）。
+fn resolve_request_id(headers: &HeaderMap) -> String {
+    headers
+        .get("x-request-id")
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && s.len() <= 128)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+}
+
+/// 将路由决策序列化为 JSON 写入 `usage_logs.route_reason`（最长 512 字符）。
+fn serialize_route_reason(decision: Option<&RoutingDecision>) -> Option<String> {
+    let d = decision?;
+    let tier = serde_json::to_value(d.tier).ok()?;
+    let payload = serde_json::json!({
+        "tier": tier,
+        "confidence": d.confidence,
+        "reason": d.reason,
+        "fallback_models": d.fallback_models,
+    });
+    let s = payload.to_string();
+    Some(if s.len() > 512 {
+        s.chars().take(512).collect()
+    } else {
+        s
+    })
+}
+
+const VIRTUAL_MODELS: &[&str] = &["auto", "eco", "balanced", "premium", "code", "reasoning", "longctx"];
+
+fn model_allowed_for_key(requested: &str, allowed: &[String]) -> bool {
+    if allowed.is_empty() {
+        return true;
+    }
+    if VIRTUAL_MODELS.contains(&requested) {
+        return true;
+    }
+    allowed.iter().any(|m| m == requested)
+}
+
+/// 估算 prompt tokens（流式无 usage 时的兜底，按字符数 / 4）
+fn estimate_prompt_tokens(messages: &[ChatMessage]) -> i32 {
+    let chars: usize = messages.iter().map(|m| m.content.len()).sum();
+    ((chars / 4).max(1)) as i32
+}
+
+async fn enforce_key_policies(
+    state: &RouterState,
+    meta: &crate::db::ApiKeyMeta,
+    model: &str,
+    request_id: &str,
+    start: Instant,
+) -> AppResult<()> {
+    if !model_allowed_for_key(model, &meta.allowed_models) {
+        spawn_failure_log(state.db.clone(), FailureLogArgs {
+            user_id: meta.user_id,
+            api_key_id: meta.api_key_id,
+            model: model.to_string(),
+            requested_model: None,
+            provider: None,
+            request_id: Some(request_id.to_string()),
+            latency_ms: start.elapsed().as_millis() as i32,
+            status: FailureLogStatus::Error,
+            route_reason: None,
+        });
+        return Err(AppError::Authorization(
+            "The requested model is not allowed for this API key".into(),
+        ));
+    }
+
+    if let Some(quota) = meta.monthly_request_quota {
+        if quota > 0 {
+            let used = db::count_api_key_requests_this_month(&state.db, meta.api_key_id).await?;
+            if used >= quota as i64 {
+                spawn_failure_log(state.db.clone(), FailureLogArgs {
+                    user_id: meta.user_id,
+                    api_key_id: meta.api_key_id,
+                    model: model.to_string(),
+                    requested_model: None,
+                    provider: None,
+                    request_id: Some(request_id.to_string()),
+                    latency_ms: start.elapsed().as_millis() as i32,
+                    status: FailureLogStatus::RateLimited,
+                    route_reason: None,
+                });
+                return Err(AppError::RateLimited(format!(
+                    "Monthly request quota exceeded ({used}/{quota})"
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn spawn_failure_log(pool: sqlx::PgPool, args: FailureLogArgs) {
+    tokio::spawn(async move {
+        if let Err(e) = db::insert_failure_log(&pool, args).await {
+            warn!(err = %e, "insert_failure_log failed");
+        }
+    });
+}
 
 /// chat completions 完整业务流程入口。
 /// `api` 层只做 HTTP 解包，所有业务逻辑在此函数中编排。
@@ -54,7 +161,8 @@ pub async fn handle_chat(
     request = request.strip_tool_messages();
 
     let meta = authenticate(&state, &headers).await?;
-    info!(ms = t.elapsed().as_millis(), "stage: auth");
+    let request_id = resolve_request_id(&headers);
+    info!(ms = t.elapsed().as_millis(), request_id = %request_id, "stage: auth");
     t = Instant::now();
 
     // auth 完成后立即并发预读余额缓存，与后续 routing/session Redis 查询重叠执行
@@ -73,10 +181,23 @@ pub async fn handle_chat(
     });
 
     if state.check_rate_limit(meta.api_key_id, meta.rate_limit_per_min).is_err() {
+        spawn_failure_log(state.db.clone(), FailureLogArgs {
+            user_id: meta.user_id,
+            api_key_id: meta.api_key_id,
+            model: request.model.clone(),
+            requested_model: None,
+            provider: None,
+            request_id: Some(request_id.clone()),
+            latency_ms: start.elapsed().as_millis() as i32,
+            status: FailureLogStatus::RateLimited,
+            route_reason: None,
+        });
         return Err(AppError::RateLimited(
             "Rate limit exceeded. Please retry after a moment.".into(),
         ));
     }
+
+    enforce_key_policies(&state, &meta, &request.model, &request_id, start).await?;
 
     if request.model.is_empty() {
         return Err(AppError::BadRequest("model is required".into()));
@@ -217,13 +338,28 @@ pub async fn handle_chat(
     let estimated_input  = bigdecimal::BigDecimal::from(500i32) / &k * &pricing.input_price;
     let estimated_cost   = estimated_input + estimated_output;
     if balance < estimated_cost {
+        spawn_failure_log(state.db.clone(), FailureLogArgs {
+            user_id: meta.user_id,
+            api_key_id: meta.api_key_id,
+            model: route.model.clone(),
+            requested_model: if request.model != route.model {
+                Some(request.model.clone())
+            } else {
+                None
+            },
+            provider: Some(route.provider.as_str().to_string()),
+            request_id: Some(request_id.clone()),
+            latency_ms: start.elapsed().as_millis() as i32,
+            status: FailureLogStatus::Error,
+            route_reason: serialize_route_reason(decision.as_ref()),
+        });
         return Err(AppError::InsufficientBalance("余额不足，请充值".to_string()));
     }
 
     if request.stream {
-        handle_stream(state, request, route, meta, pricing, start, session_id, decision).await
+        handle_stream(state, request, route, meta, pricing, start, session_id, decision, request_id).await
     } else {
-        handle_non_stream(state, request, route, meta, pricing, start, session_id, decision).await
+        handle_non_stream(state, request, route, meta, pricing, start, session_id, decision, request_id).await
     }
 }
 
@@ -234,6 +370,7 @@ pub(crate) async fn handle_non_stream(
     meta: crate::db::ApiKeyMeta, _pricing: ModelPricingInfo, start: Instant,
     session_id: Option<uuid::Uuid>,
     decision: Option<RoutingDecision>,
+    request_id: String,
 ) -> AppResult<Response> {
     let t = Instant::now();
     let (resp, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, false).await?;
@@ -248,6 +385,21 @@ pub(crate) async fn handle_non_stream(
             upstream_body = %body,
             "upstream error"
         );
+        spawn_failure_log(state.db.clone(), FailureLogArgs {
+            user_id: meta.user_id,
+            api_key_id: meta.api_key_id,
+            model: actual_model.clone(),
+            requested_model: if request.model != actual_model {
+                Some(request.model.clone())
+            } else {
+                None
+            },
+            provider: Some(actual_provider.as_str().to_string()),
+            request_id: Some(request_id.clone()),
+            latency_ms: start.elapsed().as_millis() as i32,
+            status: FailureLogStatus::Error,
+            route_reason: serialize_route_reason(decision.as_ref()),
+        });
         return Err(AppError::Upstream(format!("upstream {status}: {body}")));
     }
 
@@ -276,6 +428,8 @@ pub(crate) async fn handle_non_stream(
         let requested_model = request.model.clone();
         let routing_was_active = decision.is_some();
         let route_model    = route.model.clone();
+        let bill_request_id = request_id.clone();
+        let bill_route_reason = serialize_route_reason(decision.as_ref());
 
         tokio::spawn(async move {
             // Fallback 时 actual_model != route_model，需补查实际定价以准确计费
@@ -305,13 +459,14 @@ pub(crate) async fn handle_non_stream(
                 model:           actual_model.clone(),
                 requested_model: if actual_model != requested_model { Some(requested_model) } else { None },
                 provider:        Some(actual_provider.as_str().to_string()),
-                request_id:      None,
+                request_id:      Some(bill_request_id),
                 input_tokens:    usage.prompt_tokens as i32,
                 output_tokens:   usage.completion_tokens as i32,
                 total_tokens:    usage.total_tokens as i32,
                 cost,
                 saved_cost,
                 latency_ms:      latency as i32,
+                route_reason:    bill_route_reason,
             };
 
             if let Err(e) = db::bill_in_tx(&db_clone, bill_args).await {
@@ -332,6 +487,7 @@ pub(crate) async fn handle_non_stream(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
+        .header("X-Request-Id", request_id.as_str())
         .header("X-Model-Latency-Ms", latency_ms_header)
         .header("X-Cost-Yuan", cost_yuan_header)
         .body(Body::from(body))
@@ -345,6 +501,7 @@ pub(crate) async fn handle_stream(
     meta: crate::db::ApiKeyMeta, _pricing: ModelPricingInfo, start: Instant,
     session_id: Option<uuid::Uuid>,
     decision: Option<RoutingDecision>,
+    request_id: String,
 ) -> AppResult<Response> {
     let t = Instant::now();
     let (upstream, actual_model, actual_provider) = call_with_fallback(&state, &request, &route, true).await?;
@@ -359,6 +516,21 @@ pub(crate) async fn handle_stream(
             upstream_body = %body,
             "upstream stream error"
         );
+        spawn_failure_log(state.db.clone(), FailureLogArgs {
+            user_id: meta.user_id,
+            api_key_id: meta.api_key_id,
+            model: actual_model.clone(),
+            requested_model: if request.model != actual_model {
+                Some(request.model.clone())
+            } else {
+                None
+            },
+            provider: Some(actual_provider.as_str().to_string()),
+            request_id: Some(request_id.clone()),
+            latency_ms: start.elapsed().as_millis() as i32,
+            status: FailureLogStatus::Error,
+            route_reason: serialize_route_reason(decision.as_ref()),
+        });
         return Err(AppError::Upstream(format!("upstream {status}: {body}")));
     }
 
@@ -381,10 +553,29 @@ pub(crate) async fn handle_stream(
     let messages = request.messages.clone();
     let tier = decision.as_ref().map(|d| d.tier).unwrap_or(route.tier);
     let routing_was_active = decision.is_some();
+    let bill_request_id = request_id.clone();
+    let bill_route_reason = serialize_route_reason(decision.as_ref());
 
     tokio::spawn(async move {
         match usage_rx.await {
             Ok(Some(usage)) => {
+                let prompt_tokens = if usage.prompt_tokens > 0 {
+                    usage.prompt_tokens
+                } else {
+                    estimate_prompt_tokens(&messages)
+                };
+                let completion_tokens = usage.completion_tokens;
+                let is_estimated = usage.prompt_tokens == 0 && usage.completion_tokens > 0;
+                if is_estimated {
+                    crate::metrics::inc_stream_billing_estimated();
+                    warn!(
+                        request_id = %bill_request_id,
+                        model = %model_name,
+                        prompt_tokens,
+                        completion_tokens,
+                        "stream billing using estimated tokens (upstream omitted usage)"
+                    );
+                }
                 // Fallback 时补查实际定价，否则直接用预取定价
                 let pricing_for_bill = if model_name != route_model {
                     db::get_model_pricing(&db_clone, &model_name).await.ok().flatten()
@@ -392,7 +583,7 @@ pub(crate) async fn handle_stream(
                 } else {
                     pricing_prefetched.clone()
                 };
-                let actual_cost = compute_cost(usage.prompt_tokens, usage.completion_tokens, &pricing_for_bill);
+                let actual_cost = compute_cost(prompt_tokens, completion_tokens, &pricing_for_bill);
                 
                 let saved_cost = if routing_was_active {
                     let baseline_model = match tier {
@@ -401,7 +592,7 @@ pub(crate) async fn handle_stream(
                     };
                     let baseline_pricing = db::get_model_pricing(&db_clone, baseline_model).await.ok().flatten()
                         .unwrap_or(pricing_for_bill.clone());
-                    compute_savings(usage.prompt_tokens, usage.completion_tokens, &actual_cost, tier, &baseline_pricing)
+                    compute_savings(prompt_tokens, completion_tokens, &actual_cost, tier, &baseline_pricing)
                 } else {
                     bigdecimal::BigDecimal::from(0)
                 };
@@ -412,13 +603,14 @@ pub(crate) async fn handle_stream(
                     model: model_name.clone(),
                     requested_model: if model_name != requested { Some(requested.clone()) } else { None },
                     provider: Some(prov_str.clone()),
-                    request_id: None,
-                    input_tokens:  usage.prompt_tokens,
-                    output_tokens: usage.completion_tokens,
-                    total_tokens:  usage.prompt_tokens + usage.completion_tokens,
+                    request_id: Some(bill_request_id),
+                    input_tokens:  prompt_tokens,
+                    output_tokens: completion_tokens,
+                    total_tokens:  prompt_tokens + completion_tokens,
                     cost: actual_cost,
                     saved_cost,
                     latency_ms: start.elapsed().as_millis() as i32,
+                    route_reason: bill_route_reason,
                 }).await {
                     error!(model = %model_name, err = %e, "stream billing failed");
                 } else {
@@ -432,8 +624,16 @@ pub(crate) async fn handle_stream(
                     }
                 }
             }
-            Ok(None) => warn!(model = %model_name, "stream ended without usage data"),
-            Err(_)   => warn!(model = %model_name, "billing channel dropped"),
+            Ok(None) => warn!(
+                request_id = %bill_request_id,
+                model = %model_name,
+                "stream ended without usage data — no bill_in_tx (check upstream stream_options.include_usage)"
+            ),
+            Err(_) => warn!(
+                request_id = %bill_request_id,
+                model = %model_name,
+                "stream billing channel dropped before usage received"
+            ),
         }
     });
 
@@ -443,6 +643,7 @@ pub(crate) async fn handle_stream(
         .header("Cache-Control", "no-cache")
         .header("Connection", "keep-alive")
         .header("X-Accel-Buffering", "no")
+        .header("X-Request-Id", request_id.as_str())
         .body(body_stream)
         .unwrap())
 }

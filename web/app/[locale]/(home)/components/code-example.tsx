@@ -187,17 +187,27 @@ export function CodeExample() {
             </div>
 
             {/* Code Content */}
-            <pre 
-              className="overflow-x-auto p-6"
+            <p
+              className="border-b px-6 py-3 text-sm"
               style={{
-                backgroundColor: 'var(--color-bg-surface)',
+                borderColor: "var(--color-border-default)",
+                color: "var(--color-text-muted)",
+                backgroundColor: "var(--color-bg-surface)",
               }}
             >
-              <code 
+              {t("codeExample.sampleHint")}
+            </p>
+            <pre
+              className="overflow-x-auto p-6"
+              style={{
+                backgroundColor: "var(--color-bg-surface)",
+              }}
+            >
+              <code
                 className="text-sm leading-relaxed"
                 style={{
-                  color: 'var(--color-text-body)',
-                  fontFamily: 'var(--font-mono)',
+                  color: "var(--color-text-body)",
+                  fontFamily: "var(--font-mono)",
                 }}
               >
                 {codeExamples[activeTab]}

@@ -20,17 +20,39 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  let body: { name?: string; rateLimitPerMin?: number } = {}
+  let body: {
+    name?: string
+    rateLimitPerMin?: number
+    monthlyRequestQuota?: number | null
+    allowedModels?: string[]
+  } = {}
   try {
     body = await request.json()
   } catch {
   }
 
+  if (body.rateLimitPerMin != null && (body.rateLimitPerMin < 1 || body.rateLimitPerMin > 10000)) {
+    return NextResponse.json(
+      { error: { message: 'rateLimitPerMin must be between 1 and 10000', type: 'invalid_request_error' } },
+      { status: 400 }
+    )
+  }
+  if (body.monthlyRequestQuota != null && body.monthlyRequestQuota < 1) {
+    return NextResponse.json(
+      { error: { message: 'monthlyRequestQuota must be positive or omitted', type: 'invalid_request_error' } },
+      { status: 400 }
+    )
+  }
+
   try {
     const apiKey = await createUserApiKey({
       userId,
-      name: body.name,
+      name: body.name?.trim() || undefined,
       rateLimitPerMin: body.rateLimitPerMin,
+      monthlyRequestQuota: body.monthlyRequestQuota ?? null,
+      allowedModels: Array.isArray(body.allowedModels)
+        ? body.allowedModels.map((m) => String(m).trim()).filter(Boolean)
+        : undefined,
     })
 
     return NextResponse.json({
@@ -38,6 +60,8 @@ export async function POST(request: NextRequest) {
       key: apiKey.key,
       name: apiKey.name,
       rate_limit: apiKey.rate_limit,
+      monthly_request_quota: apiKey.monthly_request_quota,
+      allowed_models: apiKey.allowed_models,
       status: apiKey.status,
       created_at: apiKey.created_at,
       last_used_at: apiKey.last_used_at,

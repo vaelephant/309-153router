@@ -1,7 +1,7 @@
 /**
  * API 密钥模块业务逻辑层
  */
-import { getUserApiKeys, findApiKeyById } from './api-key.repo'
+import { getUserApiKeys, findApiKeyById, countRequestsByApiKeysSince } from './api-key.repo'
 import { createApiKey, revokeApiKey } from '@/lib/auth'
 import type { CreateApiKeyParams, CreateApiKeyResult, ApiKey } from './api-key.types'
 
@@ -10,16 +10,40 @@ import type { CreateApiKeyParams, CreateApiKeyResult, ApiKey } from './api-key.t
  */
 export async function fetchUserApiKeys(userId: string): Promise<ApiKey[]> {
   const apiKeys = await getUserApiKeys(userId)
+  const keyIds = apiKeys.map((k) => k.id)
 
-  return apiKeys.map(key => ({
-    id: key.id,
-    masked_key: `sk-${key.id.slice(0, 8)}...`,
-    status: key.status,
-    quota_limit: key.rateLimitPerMin * 60 * 24 * 30, // 转换为月度配额（每分钟 * 60 * 24 * 30）
-    quota_used: 0, // TODO: 从 usage_logs 表统计实际使用量
-    created_at: key.createdAt.toISOString(),
-    expires_at: null, // TODO: 如果 API Key 有过期时间，从这里返回
-  }))
+  const since30d = new Date()
+  since30d.setDate(since30d.getDate() - 30)
+  const monthStart = new Date()
+  monthStart.setUTCDate(1)
+  monthStart.setUTCHours(0, 0, 0, 0)
+
+  const [usageByKey, usageMonthByKey] = await Promise.all([
+    countRequestsByApiKeysSince(userId, keyIds, since30d),
+    countRequestsByApiKeysSince(userId, keyIds, monthStart),
+  ])
+
+  return apiKeys.map((key) => {
+    const requests30d = usageByKey[key.id] ?? 0
+    const requestsThisMonth = usageMonthByKey[key.id] ?? 0
+    return {
+      id: key.id,
+      masked_key: `sk-${key.id.slice(0, 8)}...`,
+      name: key.name,
+      status: key.status,
+      rate_limit_per_min: key.rateLimitPerMin,
+      monthly_request_quota: key.monthlyRequestQuota,
+      requests_this_month: requestsThisMonth,
+      allowed_models: key.allowedModels ?? [],
+      requests_30d: requests30d,
+      last_used_at: key.lastUsedAt?.toISOString() ?? null,
+      created_at: key.createdAt.toISOString(),
+      expires_at: null,
+      // 兼容旧字段
+      quota_limit: key.rateLimitPerMin,
+      quota_used: requests30d,
+    }
+  })
 }
 
 /**
@@ -31,7 +55,9 @@ export async function createUserApiKey(
   const apiKey = await createApiKey(
     params.userId,
     params.name,
-    params.rateLimitPerMin
+    params.rateLimitPerMin,
+    params.monthlyRequestQuota,
+    params.allowedModels
   )
 
   return {
@@ -39,6 +65,8 @@ export async function createUserApiKey(
     key: apiKey.key,
     name: apiKey.name,
     rate_limit: apiKey.rateLimitPerMin,
+    monthly_request_quota: apiKey.monthlyRequestQuota,
+    allowed_models: apiKey.allowedModels ?? [],
     status: apiKey.status,
     created_at: apiKey.createdAt.toISOString(),
     last_used_at: apiKey.lastUsedAt?.toISOString() || null,

@@ -4,16 +4,21 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Eye, EyeOff, Plus, Trash2, Check } from "lucide-react"
+import { Copy, Plus, Trash2, Check, HelpCircle } from "lucide-react"
 import { getCurrentUserId } from "@/lib/auth-client"
 import { useI18n } from "@/lib/i18n-context"
 
 interface ApiKey {
   id: string
   masked_key: string
+  name: string | null
   status: string
-  quota_limit: number
-  quota_used: number
+  rate_limit_per_min: number
+  monthly_request_quota: number | null
+  requests_this_month: number
+  allowed_models: string[]
+  requests_30d: number
+  last_used_at: string | null
   created_at: string
   expires_at: string | null
 }
@@ -26,9 +31,26 @@ export function ApiKeys() {
   const [newKey, setNewKey] = useState<string | null>(null)
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [createName, setCreateName] = useState("")
+  const [createRateLimit, setCreateRateLimit] = useState("60")
+  const [createMonthlyQuota, setCreateMonthlyQuota] = useState("")
+  const [createAllowedModels, setCreateAllowedModels] = useState("")
+  const [modelOptions, setModelOptions] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     loadKeys()
+    async function loadModels() {
+      try {
+        const res = await fetch("/api/models")
+        const data = await res.json()
+        const names = ((data.models || []) as { name: string }[]).map((m) => m.name)
+        setModelOptions(names)
+      } catch {
+        setModelOptions([])
+      }
+    }
+    loadModels()
   }, [locale])
 
   const loadKeys = async () => {
@@ -53,25 +75,56 @@ export function ApiKeys() {
     }
   }
 
+  const resetCreateForm = () => {
+    setCreateName("")
+    setCreateRateLimit("60")
+    setCreateMonthlyQuota("")
+    setCreateAllowedModels("")
+  }
+
   const handleCreateKey = async () => {
     const userId = getCurrentUserId()
-    if (!userId) {
-      return
-    }
+    if (!userId) return
 
+    const rateLimit = parseInt(createRateLimit, 10)
+    if (Number.isNaN(rateLimit) || rateLimit < 1) return
+
+    const body: Record<string, unknown> = {
+      name: createName.trim() || undefined,
+      rateLimitPerMin: rateLimit,
+    }
+    if (createMonthlyQuota.trim()) {
+      const q = parseInt(createMonthlyQuota, 10)
+      if (!Number.isNaN(q) && q > 0) body.monthlyRequestQuota = q
+    }
+    const models = createAllowedModels
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (models.length > 0) body.allowedModels = models
+
+    setCreating(true)
     try {
       const response = await fetch(`/${locale}/api/keys`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
+          "Content-Type": "application/json",
+          "x-user-id": userId,
         },
+        body: JSON.stringify(body),
       })
       const data = await response.json()
+      if (!response.ok) {
+        console.error(data?.error?.message || "create failed")
+        return
+      }
       setNewKey(data.key)
+      resetCreateForm()
       loadKeys()
     } catch (error) {
-      console.error('Failed to create key:', error)
+      console.error("Failed to create key:", error)
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -120,6 +173,14 @@ export function ApiKeys() {
     return new Date(dateString).toLocaleDateString(localeTag)
   }
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString(localeTag, {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
 
   return (
     <Card className="bg-card border-border">
@@ -153,7 +214,7 @@ export function ApiKeys() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-card-foreground">
-                      API Key
+                      {apiKey.name || t("dashboard.unnamed")}
                     </span>
                     <Badge
                       variant={apiKey.status === "active" ? "secondary" : "outline"}
@@ -171,9 +232,24 @@ export function ApiKeys() {
                       {apiKey.masked_key}
                     </code>
                   </div>
-                  <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                    <span>{t("dashboard.rateLimit")}: {t("dashboard.perMinute", { n: apiKey.rate_limit_per_min })}</span>
+                    <span>
+                      {t("dashboard.monthlyQuota")}:{" "}
+                      {apiKey.monthly_request_quota
+                        ? `${apiKey.requests_this_month.toLocaleString()} / ${apiKey.monthly_request_quota.toLocaleString()}`
+                        : t("dashboard.unlimited")}
+                    </span>
+                    {apiKey.allowed_models?.length > 0 && (
+                      <span title={apiKey.allowed_models.join(", ")}>
+                        {t("dashboard.allowedModels")}: {apiKey.allowed_models.length}
+                      </span>
+                    )}
+                    <span>{t("dashboard.requests30d")}: {apiKey.requests_30d.toLocaleString()}</span>
                     <span>{t("dashboard.createdAt")} {formatDate(apiKey.created_at)}</span>
-                    <span>{t("dashboard.expiresAt")}: {formatDate(apiKey.expires_at)}</span>
+                    {apiKey.last_used_at && (
+                      <span>{t("dashboard.lastUsed")}: {formatDateTime(apiKey.last_used_at)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -236,18 +312,74 @@ export function ApiKeys() {
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-semibold mb-4">{t("dashboard.createKeyTitle")}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <h3 className="text-lg font-semibold mb-2">{t("dashboard.createKeyTitle")}</h3>
+                  <p className="text-sm text-muted-foreground mb-4 flex items-start gap-1">
+                    <HelpCircle className="size-3.5 mt-0.5 shrink-0" />
                     {t("dashboard.createKeyDesc")}
                   </p>
+                  <div className="space-y-3 mb-4 max-h-[50vh] overflow-y-auto">
+                    <div>
+                      <label className="text-xs text-muted-foreground">{t("dashboard.keyNameLabel")}</label>
+                      <input
+                        className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                        placeholder={t("dashboard.keyNamePlaceholder")}
+                        value={createName}
+                        onChange={(e) => setCreateName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground">{t("dashboard.rateLimit")}</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={10000}
+                          className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                          value={createRateLimit}
+                          onChange={(e) => setCreateRateLimit(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">{t("dashboard.monthlyQuota")}</label>
+                        <input
+                          type="number"
+                          min={1}
+                          className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                          placeholder={t("dashboard.unlimited")}
+                          value={createMonthlyQuota}
+                          onChange={(e) => setCreateMonthlyQuota(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">{t("dashboard.allowedModelsLabel")}</label>
+                      <textarea
+                        className="mt-1 w-full min-h-[72px] rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                        placeholder={t("dashboard.allowedModelsPlaceholder")}
+                        value={createAllowedModels}
+                        onChange={(e) => setCreateAllowedModels(e.target.value)}
+                      />
+                      {modelOptions.length > 0 && (
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {t("dashboard.allowedModelsHint")}: {modelOptions.slice(0, 5).join(", ")}
+                          {modelOptions.length > 5 ? "…" : ""}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex justify-end gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => setShowCreateModal(false)}
+                      onClick={() => {
+                        setShowCreateModal(false)
+                        resetCreateForm()
+                      }}
                     >
                       {t("dashboard.cancel")}
                     </Button>
-                    <Button onClick={handleCreateKey}>{t("dashboard.create")}</Button>
+                    <Button onClick={handleCreateKey} disabled={creating}>
+                      {creating ? t("dashboard.creating") : t("dashboard.create")}
+                    </Button>
                   </div>
                 </>
               )}

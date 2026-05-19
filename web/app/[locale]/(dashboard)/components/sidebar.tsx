@@ -5,9 +5,11 @@ import {
   LayoutDashboard,
   Key,
   BarChart3,
+  Cpu,
   Settings,
   CreditCard,
   BookOpen,
+  FlaskConical,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -35,6 +37,8 @@ const userNavItems = [
   { icon: Key, labelKey: "dashboard.apiKeys", id: "keys", href: "/keys" },
   { icon: Users, labelKey: "dashboard.invite", id: "invite", href: "/invite" },
   { icon: BarChart3, labelKey: "dashboard.analytics", id: "analytics", href: "/analytics" },
+  { icon: Cpu, labelKey: "dashboard.modelsCatalog", id: "models", href: "/models" },
+  { icon: FlaskConical, labelKey: "dashboard.playground", id: "playground", href: "/playground" },
   { icon: Wallet, labelKey: "dashboard.recharge", id: "recharge", href: "/recharge" },
   { icon: CreditCard, labelKey: "dashboard.billing", id: "billing", href: "/billing" },
   { icon: BookOpen, labelKey: "dashboard.docs", id: "docs", href: "/docs" },
@@ -116,6 +120,8 @@ export function DashboardSidebar() {
     if (pathname?.endsWith("/invite")) return "invite"
     if (pathname?.includes("/keys")) return "keys"
     if (pathname?.includes("/analytics")) return "analytics"
+    if (pathname?.endsWith("/models")) return "models"
+    if (pathname?.includes("/playground")) return "playground"
     if (pathname?.includes("/recharge")) return "recharge"
     if (pathname?.includes("/billing")) return "billing"
     if (pathname?.includes("/docs")) return "docs"

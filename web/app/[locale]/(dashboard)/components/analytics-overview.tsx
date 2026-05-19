@@ -14,6 +14,8 @@ interface OverviewData {
     total_saved_cost: number
     avg_latency_ms: number
     success_rate: number
+    error_count?: number
+    rate_limited_count?: number
   }
   changes: {
     requests: number
