@@ -230,6 +230,80 @@
     "title": "OptRouter - 一个 API 接入全球主流大模型",
     "description": "兼容 OpenAI API，统一接入 OpenAI、Claude、Gemini、DeepSeek 等；智能路由与自动故障转移，更低成本、更高稳定性、更少接入负担。"
   },
+  "wxPoster": {
+    "ctaAddWechat": "添加微信",
+    "wechatDialogTitle": "扫码添加微信顾问",
+    "wechatDialogHint": "长按识别二维码，添加后即可获取接入方案",
+    "wechatQrAlt": "微信二维码",
+    "wechatQrPlaceholder": "微信二维码加载失败，请稍后再试"
+  },
+  "aiGateway": {
+    "hero": {
+      "ariaLabel": "AI 智能网关产品介绍",
+      "badge": "AI 模型智能网关",
+      "title": "一个接口，稳定接入多个大模型",
+      "subtitle": "兼容 OpenAI API，统一调用 OpenAI、Claude、Gemini、DeepSeek 等模型，让团队专注产品而不是接入。",
+      "pill0": "约 30 秒接入",
+      "pill1": "OpenAI 兼容",
+      "pill2": "智能路由",
+      "point0": "降低接入成本",
+      "point1": "自动故障切换",
+      "point2": "优化调用成本",
+      "trust": "适合 AI 产品、SaaS、创业团队与企业技术团队",
+      "primaryCta": "免费试用",
+      "secondaryCta": "加微信"
+    },
+    "why": {
+      "title": "你可能正遇到这些",
+      "item0Title": "接入麻烦",
+      "item0Desc": "不同模型接口不统一，维护成本高。",
+      "item1Title": "成本难控",
+      "item1Desc": "高价模型被频繁调用，费用越来越高。",
+      "item2Title": "服务不稳",
+      "item2Desc": "单一模型异常，容易影响业务体验。",
+      "item3Title": "缺少管理",
+      "item3Desc": "调用量、成功率、延迟、成本不清楚。"
+    },
+    "solutions": {
+      "title": "OptRouter 帮你解决",
+      "item0Title": "统一接入",
+      "item0Desc": "一个 API 访问多个主流模型，无需重复适配。",
+      "item1Title": "智能路由",
+      "item1Desc": "按成本、延迟和可用性自动选模型，异常自动切换。",
+      "item2Title": "统一管控",
+      "item2Desc": "用量、成功率、延迟和成本集中可见。"
+    },
+    "steps": {
+      "title": "3 步开始用",
+      "item0Title": "注册获取 Key",
+      "item0Desc": "免费注册，立即获得体验额度。",
+      "item1Title": "改一行地址",
+      "item1Desc": "把 base_url 指向 OptRouter，沿用 OpenAI SDK。",
+      "item2Title": "开始调用",
+      "item2Desc": "流式、工具调用、多模型切换开箱即用。"
+    },
+    "audience": {
+      "title": "适合这些团队",
+      "item0": "AI 产品团队",
+      "item1": "开发者 / 技术负责人",
+      "item2": "创业团队",
+      "item3": "企业 AI 应用团队"
+    },
+    "wechat": {
+      "title": "扫码添加微信，获取接入方案",
+      "qrAlt": "微信二维码",
+      "qrPlaceholder": "微信二维码加载失败",
+      "caption": "长按识别二维码"
+    },
+    "convert": {
+      "title": "立即联系",
+      "subtitle": "建议先扫微信添加顾问，获取接入方案；也可留手机号，我们会尽快联系你。",
+      "or": "或留个电话",
+      "phonePlaceholder": "请输入手机号",
+      "submit": "留个电话，稍后联系",
+      "registerLink": "想先自己试？免费注册 →"
+    }
+  },
   "auth": {
     "loginTitle": "登录",
     "loginDesc": "使用手机号和密码登录",
@@ -625,11 +699,13 @@
     "paymentMethod": "支付方式",
     "wechat": "微信支付",
     "alipay": "支付宝",
+    "stripe": "Stripe（银行卡）",
     "confirm": "确认充值",
     "creating": "创建订单中...",
     "toastAmountError": "充值金额必须在 {min} - {max} 元之间",
     "toastPleaseLogin": "请先登录",
     "toastOrderSuccess": "订单创建成功，请扫码支付",
+    "toastOrderSuccessStripe": "订单创建成功，正在跳转到 Stripe…",
     "toastOrderFail": "创建订单失败",
     "toastOrderFailRetry": "创建订单失败，请稍后重试",
     "scanPay": "扫码支付",
@@ -638,6 +714,7 @@
     "scanWith": "请使用{provider}扫码支付",
     "wechatShort": "微信",
     "alipayShort": "支付宝",
+    "stripeShort": "Stripe",
     "paySuccess": "支付成功！",
     "redirecting": "正在跳转…",
     "completeWithin": "请在 {time} 内完成支付，超时将自动返回",
@@ -662,6 +739,7 @@
     "statusCanceled": "已取消",
     "providerWechat": "微信支付",
     "providerAlipay": "支付宝",
+    "providerStripe": "Stripe",
     "typeRecharge": "充值",
     "typeUsage": "调用扣费",
     "typeRefund": "退款",

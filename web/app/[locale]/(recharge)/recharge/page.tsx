@@ -6,16 +6,19 @@ import { AuthGuard } from "../../(auth)/components/auth-guard"
 import { RechargeForm } from "../components/recharge-form"
 import { PaymentQrcode } from "../components/payment-qrcode"
 import { useI18n } from "@/lib/i18n-context"
+import type { CreateRechargeOrderResult } from "../domain/recharge.types"
 
 export default function RechargePage() {
   const { t } = useI18n()
-  const [order, setOrder] = useState<{
-    orderId: string
-    bizOrderNo: string
-    qrcodeUrl: string
-    amount: number
-    payProvider: 'WECHAT' | 'ALIPAY'
-  } | null>(null)
+  const [order, setOrder] = useState<CreateRechargeOrderResult | null>(null)
+
+  const handleOrderCreated = (newOrder: CreateRechargeOrderResult) => {
+    if (newOrder.payProvider === 'STRIPE' && newOrder.payUrl) {
+      window.location.href = newOrder.payUrl
+      return
+    }
+    setOrder(newOrder)
+  }
 
   return (
     <AuthGuard>
@@ -34,9 +37,7 @@ export default function RechargePage() {
               onClose={() => setOrder(null)}
             />
           ) : (
-            <RechargeForm
-              onOrderCreated={(newOrder) => setOrder(newOrder)}
-            />
+            <RechargeForm onOrderCreated={handleOrderCreated} />
           )}
         </div>
       </DashboardLayout>

@@ -6,27 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { RECHARGE_AMOUNTS } from "../domain/recharge.types"
+import { RECHARGE_AMOUNTS, type CreateRechargeOrderResult, type PayProvider } from "../domain/recharge.types"
 import { createRechargeOrderAction } from "../actions"
 import { getCurrentUserId } from "@/lib/auth-client"
 import { toast } from "sonner"
 import { useI18n } from "@/lib/i18n-context"
 
 interface RechargeFormProps {
-  onOrderCreated: (order: {
-    orderId: string
-    bizOrderNo: string
-    qrcodeUrl: string
-    amount: number
-    payProvider: 'WECHAT' | 'ALIPAY'
-  }) => void
+  onOrderCreated: (order: CreateRechargeOrderResult) => void
 }
 
 export function RechargeForm({ onOrderCreated }: RechargeFormProps) {
   const { t } = useI18n()
   const [amount, setAmount] = useState<number | null>(null)
   const [customAmount, setCustomAmount] = useState("")
-  const [payProvider, setPayProvider] = useState<'WECHAT' | 'ALIPAY'>('WECHAT')
+  const [payProvider, setPayProvider] = useState<PayProvider>('WECHAT')
   const [loading, setLoading] = useState(false)
 
   const handlePresetAmount = (preset: number) => {
@@ -68,7 +62,11 @@ export function RechargeForm({ onOrderCreated }: RechargeFormProps) {
 
       if (result.ok && result.data) {
         onOrderCreated(result.data)
-        toast.success(t("recharge.toastOrderSuccess"))
+        toast.success(
+          result.data.payProvider === 'STRIPE'
+            ? t("recharge.toastOrderSuccessStripe")
+            : t("recharge.toastOrderSuccess")
+        )
       } else {
         toast.error(result.error || t("recharge.toastOrderFail"))
       }
@@ -120,7 +118,7 @@ export function RechargeForm({ onOrderCreated }: RechargeFormProps) {
 
         <div className="space-y-3">
           <Label>{t("recharge.paymentMethod")}</Label>
-          <RadioGroup value={payProvider} onValueChange={(v) => setPayProvider(v as 'WECHAT' | 'ALIPAY')}>
+          <RadioGroup value={payProvider} onValueChange={(v) => setPayProvider(v as PayProvider)}>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="WECHAT" id="wechat" />
               <Label htmlFor="wechat" className="cursor-pointer">
@@ -131,6 +129,12 @@ export function RechargeForm({ onOrderCreated }: RechargeFormProps) {
               <RadioGroupItem value="ALIPAY" id="alipay" />
               <Label htmlFor="alipay" className="cursor-pointer">
                 {t("recharge.alipay")}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="STRIPE" id="stripe" />
+              <Label htmlFor="stripe" className="cursor-pointer">
+                {t("recharge.stripe")}
               </Label>
             </div>
           </RadioGroup>

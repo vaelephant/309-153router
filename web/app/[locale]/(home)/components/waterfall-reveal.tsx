@@ -4,10 +4,24 @@ import { useState, useEffect, Children } from "react"
 
 const STAGGER_MS = 280
 const DURATION_MS = 600
+const REVEALED_KEY = "optrouter_home_sections_revealed"
+
+function allVisible(count: number) {
+  return Array.from({ length: count }, () => true)
+}
+
+function hasRevealedBefore(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    return sessionStorage.getItem(REVEALED_KEY) === "1"
+  } catch {
+    return false
+  }
+}
 
 /**
  * 包裹主页区块，使子组件像瀑布流一样依次动态显示（淡入 + 自下而上）
- * 尊重 prefers-reduced-motion：系统开启减少动效时立即展示，无延迟动画
+ * 同一会话内只播一次，避免重载时整块内容再次「刷新」入场
  */
 export function WaterfallReveal({
   children,
@@ -17,8 +31,14 @@ export function WaterfallReveal({
   className?: string
 }) {
   const childArray = Children.toArray(children)
+  const count = childArray.length
+  const revealedBefore = hasRevealedBefore()
+
   const [reduceMotion, setReduceMotion] = useState(false)
-  const [visible, setVisible] = useState<boolean[]>(() => childArray.map(() => false))
+  const [skipAnimation, setSkipAnimation] = useState(revealedBefore)
+  const [visible, setVisible] = useState<boolean[]>(() =>
+    revealedBefore ? allVisible(count) : allVisible(count).map(() => false)
+  )
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -26,16 +46,17 @@ export function WaterfallReveal({
       const reduced = mq.matches
       setReduceMotion(reduced)
       if (reduced) {
-        setVisible(childArray.map(() => true))
+        setVisible(allVisible(count))
+        setSkipAnimation(true)
       }
     }
     apply()
     mq.addEventListener("change", apply)
     return () => mq.removeEventListener("change", apply)
-  }, [childArray.length])
+  }, [count])
 
   useEffect(() => {
-    if (reduceMotion) return
+    if (reduceMotion || skipAnimation || revealedBefore) return
 
     const timers: ReturnType<typeof setTimeout>[] = []
     childArray.forEach((_, i) => {
@@ -49,17 +70,35 @@ export function WaterfallReveal({
         }, i * STAGGER_MS)
       )
     })
-    return () => timers.forEach(clearTimeout)
-  }, [childArray.length, reduceMotion])
+
+    const doneTimer = setTimeout(
+      () => {
+        try {
+          sessionStorage.setItem(REVEALED_KEY, "1")
+        } catch {
+          // ignore
+        }
+        setSkipAnimation(true)
+      },
+      (count - 1) * STAGGER_MS + DURATION_MS + 50
+    )
+
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(doneTimer)
+    }
+  }, [count, reduceMotion, skipAnimation, revealedBefore])
+
+  const showStatic = reduceMotion || skipAnimation
 
   return (
     <div className={className}>
       {childArray.map((child, i) => (
         <div
           key={i}
-          className={reduceMotion ? "" : "transition-all ease-out"}
+          className={showStatic ? "" : "transition-all ease-out"}
           style={
-            reduceMotion
+            showStatic
               ? undefined
               : {
                   transitionProperty: "opacity, transform",

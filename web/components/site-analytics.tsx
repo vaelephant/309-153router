@@ -1,38 +1,55 @@
 'use client';
 
-import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { resolveTrafficSource } from '@/lib/traffic-source';
 
-/**
- * 网站访问统计埋点组件
- *
- * 自动监听路由变化并记录访问数据到 /api/site-analytics
- * 在根 layout.tsx 中引入即可，不渲染任何内容
- */
-export default function SiteAnalytics() {
+function SiteAnalyticsInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const search = searchParams.toString();
 
   useEffect(() => {
     const ac = new AbortController();
+    const source = resolveTrafficSource(searchParams);
+    const campaign = searchParams.get('campaign')?.trim() || undefined;
+
     const recordPageView = async () => {
       try {
         const res = await fetch('/api/site-analytics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: pathname }),
+          body: JSON.stringify({
+            path: pathname,
+            source: source || undefined,
+            campaign,
+          }),
           signal: ac.signal,
         });
         if (!res.ok && res.status !== 499) {
-          // 499 表示服务端已识别为客户端中断，不记日志
+          // 499 = client aborted
         }
-      } catch (_) {
-        // 用户导航离开导致的中断等，静默忽略
+      } catch {
+        // navigation abort, ignore
       }
     };
 
     recordPageView();
     return () => ac.abort();
-  }, [pathname]);
+    // 勿把 searchParams 对象放进依赖（引用常变会重复打点）；用 toString 即可
+  }, [pathname, search]);
 
   return null;
+}
+
+/**
+ * 网站访问统计埋点：记录 path、来源 source、活动 campaign
+ */
+export default function SiteAnalytics() {
+  return (
+    <Suspense fallback={null}>
+      <SiteAnalyticsInner />
+    </Suspense>
+  );
 }

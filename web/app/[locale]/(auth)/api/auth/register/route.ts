@@ -8,10 +8,14 @@ import { handleInviteCodeOnRegister } from '../../../../(invite)/domain/invite.s
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { phone, password, invite_code } = body
+  const { phone, password, invite_code, from, source } = body
+  const trafficSource =
+    (typeof from === 'string' && from.trim()) ||
+    (typeof source === 'string' && source.trim()) ||
+    undefined
 
   const result = await registerUser(
-    { phone, password, inviteCode: invite_code },
+    { phone, password, inviteCode: invite_code, trafficSource },
     async (userId: string, userPhone: string, inviteCode: string) => {
       await handleInviteCodeOnRegister({
         newUserId: userId,

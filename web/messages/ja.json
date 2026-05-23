@@ -230,6 +230,80 @@
     "title": "OptRouter - 1つの API で世界の主流 LLM に",
     "description": "OpenAI API 互換。OpenAI・Claude・Gemini・DeepSeek などへ統一接続。スマートルーティングとフェイルオーバーで、低コスト・高安定・低負担。"
   },
+  "wxPoster": {
+    "ctaAddWechat": "WeChatで追加",
+    "wechatDialogTitle": "QRコードでWeChat追加",
+    "wechatDialogHint": "QRを長押しして追加後、接続方案をご案内します",
+    "wechatQrAlt": "WeChat QRコード",
+    "wechatQrPlaceholder": "QRの読み込みに失敗しました。しばらくして再試行してください。"
+  },
+  "aiGateway": {
+    "hero": {
+      "ariaLabel": "AI ゲートウェイ概要",
+      "badge": "AI モデル・ゲートウェイ",
+      "title": "1 API で複数 LLM を安定接続",
+      "subtitle": "OpenAI 互換。OpenAI・Claude・Gemini・DeepSeek などを統一。接続ではなく製品に集中。",
+      "pill0": "約30秒で接続",
+      "pill1": "OpenAI 互換",
+      "pill2": "スマートルーティング",
+      "point0": "接続コストを削減",
+      "point1": "自動フェイルオーバー",
+      "point2": "呼び出しコストを最適化",
+      "trust": "AI 製品・SaaS・スタートアップ・企業 AI チーム向け",
+      "primaryCta": "無料で試す",
+      "secondaryCta": "WeChat"
+    },
+    "why": {
+      "title": "こんな課題はありませんか",
+      "item0Title": "接続が面倒",
+      "item0Desc": "ベンダーごとに API が違い、運用負荷が高い。",
+      "item1Title": "コストが読めない",
+      "item1Desc": "高単価モデルの多用で費用が増える。",
+      "item2Title": "サービス不安定",
+      "item2Desc": "1社障害で自社体験にも影響。",
+      "item3Title": "管理不足",
+      "item3Desc": "利用量・成功率・遅延・コストが見えない。"
+    },
+    "solutions": {
+      "title": "OptRouter の解決策",
+      "item0Title": "統一 API",
+      "item0Desc": "主要モデルへ 1 エンドポイント、重複実装不要。",
+      "item1Title": "スマートルーティング",
+      "item1Desc": "コスト・遅延・可用性で自動選択、障害時フェイルオーバー。",
+      "item2Title": "一元管理",
+      "item2Desc": "利用量・成功率・遅延・コストを一括可視化。"
+    },
+    "steps": {
+      "title": "3 ステップで開始",
+      "item0Title": "登録して Key 取得",
+      "item0Desc": "無料登録で体験クレジットを付与。",
+      "item1Title": "base_url を変更",
+      "item1Desc": "OpenAI SDK の向き先を OptRouter に。",
+      "item2Title": "呼び出し開始",
+      "item2Desc": "ストリーミング・ツール・モデル切替に対応。"
+    },
+    "audience": {
+      "title": "こんなチームに",
+      "item0": "AI 製品チーム",
+      "item1": "開発者・技術責任者",
+      "item2": "スタートアップ",
+      "item3": "企業 AI チーム"
+    },
+    "wechat": {
+      "title": "WeChat で接続方案を取得",
+      "qrAlt": "WeChat QR",
+      "qrPlaceholder": "QR の読み込みに失敗",
+      "caption": "長押しでスキャン"
+    },
+    "convert": {
+      "title": "お問い合わせ",
+      "subtitle": "まず WeChat でアドバイザーを追加。電話番号でも折り返し連絡します。",
+      "or": "または電話番号",
+      "phonePlaceholder": "携帯番号を入力",
+      "submit": "電話を残す、後ほど連絡",
+      "registerLink": "先に試す？無料登録 →"
+    }
+  },
   "auth": {
     "loginTitle": "ログイン",
     "loginDesc": "携帯番号とパスワードでログイン",
@@ -625,11 +699,13 @@
     "paymentMethod": "支払い方法",
     "wechat": "WeChat Pay",
     "alipay": "Alipay",
+    "stripe": "Stripe（カード）",
     "confirm": "チャージする",
     "creating": "注文作成中...",
     "toastAmountError": "金額は {min} - {max} の範囲で入力してください",
     "toastPleaseLogin": "ログインしてください",
     "toastOrderSuccess": "注文を作成しました。QRコードで支払い",
+    "toastOrderSuccessStripe": "注文を作成しました。Stripeへ移動します…",
     "toastOrderFail": "注文の作成に失敗しました",
     "toastOrderFailRetry": "注文の作成に失敗しました。しばらくして再試行",
     "scanPay": "QRコードで支払い",
@@ -638,6 +714,7 @@
     "scanWith": "{provider}でスキャンして支払い",
     "wechatShort": "WeChat",
     "alipayShort": "Alipay",
+    "stripeShort": "Stripe",
     "paySuccess": "支払い完了！",
     "redirecting": "リダイレクト中…",
     "completeWithin": "{time} 以内に支払いを完了してください。タイムアウトで戻ります",
@@ -662,6 +739,7 @@
     "statusCanceled": "キャンセル",
     "providerWechat": "WeChat Pay",
     "providerAlipay": "Alipay",
+    "providerStripe": "Stripe",
     "typeRecharge": "チャージ",
     "typeUsage": "利用料",
     "typeRefund": "返金",

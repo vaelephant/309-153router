@@ -230,6 +230,80 @@
     "title": "OptRouter - One API for mainstream global LLMs",
     "description": "OpenAI API compatible; unified access to OpenAI, Claude, Gemini, DeepSeek and more. Smart routing and failover—lower cost, higher reliability, less integration burden."
   },
+  "wxPoster": {
+    "ctaAddWechat": "Add on WeChat",
+    "wechatDialogTitle": "Scan to add our WeChat advisor",
+    "wechatDialogHint": "Long-press the QR code to add us and get integration help",
+    "wechatQrAlt": "WeChat QR code",
+    "wechatQrPlaceholder": "QR failed to load. Please try again later."
+  },
+  "aiGateway": {
+    "hero": {
+      "ariaLabel": "AI gateway overview",
+      "badge": "AI model gateway",
+      "title": "One API, reliable access to many LLMs",
+      "subtitle": "OpenAI-compatible—call OpenAI, Claude, Gemini, DeepSeek, and more. Focus on your product, not wiring.",
+      "pill0": "~30s to integrate",
+      "pill1": "OpenAI compatible",
+      "pill2": "Smart routing",
+      "point0": "Lower integration cost",
+      "point1": "Automatic failover",
+      "point2": "Optimize call cost",
+      "trust": "For AI products, SaaS, startups, and enterprise AI teams",
+      "primaryCta": "Try free",
+      "secondaryCta": "WeChat"
+    },
+    "why": {
+      "title": "Sound familiar?",
+      "item0Title": "Painful integration",
+      "item0Desc": "Different APIs per vendor—high maintenance.",
+      "item1Title": "Costs run away",
+      "item1Desc": "Premium models used too often—bills climb.",
+      "item2Title": "Unstable service",
+      "item2Desc": "One provider glitch hurts your product.",
+      "item3Title": "No visibility",
+      "item3Desc": "Usage, success rate, latency, cost unclear."
+    },
+    "solutions": {
+      "title": "How OptRouter helps",
+      "item0Title": "Unified API",
+      "item0Desc": "One endpoint for mainstream models—no repeat integration.",
+      "item1Title": "Smart routing",
+      "item1Desc": "Pick models by cost, latency, and uptime—with failover.",
+      "item2Title": "One control plane",
+      "item2Desc": "Usage, success rate, latency, and cost in one place."
+    },
+    "steps": {
+      "title": "Get started in 3 steps",
+      "item0Title": "Register for a key",
+      "item0Desc": "Sign up free and get trial credits.",
+      "item1Title": "Change base URL",
+      "item1Desc": "Point OpenAI SDK to OptRouter—minimal code change.",
+      "item2Title": "Start calling",
+      "item2Desc": "Streaming, tools, and model switching ready to go."
+    },
+    "audience": {
+      "title": "Built for",
+      "item0": "AI product teams",
+      "item1": "Developers & tech leads",
+      "item2": "Startup teams",
+      "item3": "Enterprise AI teams"
+    },
+    "wechat": {
+      "title": "Scan WeChat for integration help",
+      "qrAlt": "WeChat QR",
+      "qrPlaceholder": "WeChat QR failed to load",
+      "caption": "Long-press to scan"
+    },
+    "convert": {
+      "title": "Contact us",
+      "subtitle": "Scan WeChat to talk to our advisor—or leave your number and we'll reach out soon.",
+      "or": "or your number",
+      "phonePlaceholder": "Your mobile number",
+      "submit": "Leave number, we'll reach out",
+      "registerLink": "Want to try yourself? Register →"
+    }
+  },
   "auth": {
     "loginTitle": "Login",
     "loginDesc": "Sign in with your phone number and password",
@@ -625,11 +699,13 @@
     "paymentMethod": "Payment method",
     "wechat": "WeChat Pay",
     "alipay": "Alipay",
+    "stripe": "Stripe (card)",
     "confirm": "Confirm recharge",
     "creating": "Creating order...",
     "toastAmountError": "Amount must be between {min} and {max}",
     "toastPleaseLogin": "Please sign in first",
     "toastOrderSuccess": "Order created. Please scan to pay",
+    "toastOrderSuccessStripe": "Order created. Redirecting to Stripe…",
     "toastOrderFail": "Failed to create order",
     "toastOrderFailRetry": "Failed to create order, please try again",
     "scanPay": "Scan to pay",
@@ -638,6 +714,7 @@
     "scanWith": "Scan with {provider} to pay",
     "wechatShort": "WeChat",
     "alipayShort": "Alipay",
+    "stripeShort": "Stripe",
     "paySuccess": "Payment successful!",
     "redirecting": "Redirecting…",
     "completeWithin": "Complete payment within {time} or you will be redirected",
@@ -662,6 +739,7 @@
     "statusCanceled": "Canceled",
     "providerWechat": "WeChat Pay",
     "providerAlipay": "Alipay",
+    "providerStripe": "Stripe",
     "typeRecharge": "Recharge",
     "typeUsage": "Usage",
     "typeRefund": "Refund",

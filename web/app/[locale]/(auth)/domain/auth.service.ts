@@ -176,7 +176,13 @@ export async function registerUser(
 
     const regIp = headers ? extractIpAddress(headers) : null
     const regUa = headers?.get('user-agent') || null
-    notifyUserRegister(normalized, params.inviteCode || null, regUa, regIp).catch((err) => {
+    notifyUserRegister(
+      normalized,
+      params.inviteCode || null,
+      regUa,
+      regIp,
+      params.trafficSource || null
+    ).catch((err) => {
       console.error('发送钉钉注册通知失败:', err)
     })
 

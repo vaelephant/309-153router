@@ -13,8 +13,8 @@ export const createRechargeOrderSchema = z.object({
     .min(RECHARGE_AMOUNTS.MIN, `最小充值金额为 ${RECHARGE_AMOUNTS.MIN} 元`)
     .max(RECHARGE_AMOUNTS.MAX, `最大充值金额为 ${RECHARGE_AMOUNTS.MAX} 元`)
     .positive('充值金额必须大于 0'),
-  payProvider: z.enum(['WECHAT', 'ALIPAY'], {
-    errorMap: () => ({ message: '支付渠道必须是 WECHAT 或 ALIPAY' }),
+  payProvider: z.enum(['WECHAT', 'ALIPAY', 'STRIPE'], {
+    errorMap: () => ({ message: '支付渠道必须是 WECHAT、ALIPAY 或 STRIPE' }),
   }),
 })
 

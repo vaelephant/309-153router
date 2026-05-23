@@ -10,6 +10,7 @@ import { saveUserAuth, isAuthenticated } from '@/lib/auth-client'
 import { RegisterInviteCodeField } from '../../(invite)/components/RegisterInviteCodeField'
 import { LocaleLink } from '@/components/locale-link'
 import { useI18n } from '@/lib/i18n-context'
+import { resolveTrafficSource } from '@/lib/traffic-source'
 
 function getLocaleFromPathname(pathname: string): string {
   const segment = pathname.split('/')[1]
@@ -33,7 +34,8 @@ function RegisterPageContent() {
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+    resolveTrafficSource(searchParams)
+  }, [searchParams])
 
   useEffect(() => {
     if (!isMounted) return
@@ -55,12 +57,18 @@ function RegisterPageContent() {
     setLoading(true)
     const urlInviteCode = searchParams.get('invite_code')
     const finalInviteCode = inviteCode?.trim() || urlInviteCode?.trim().toUpperCase() || undefined
+    const trafficSource = resolveTrafficSource(searchParams)
 
     try {
       const response = await fetch(`/${locale}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password, invite_code: finalInviteCode }),
+        body: JSON.stringify({
+          phone,
+          password,
+          invite_code: finalInviteCode,
+          from: trafficSource || undefined,
+        }),
       })
 
       const data = await response.json()

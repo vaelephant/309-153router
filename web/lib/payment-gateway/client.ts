@@ -10,7 +10,7 @@ import axios, { AxiosInstance } from 'axios'
 export interface CreatePayOrderOptions {
   bizOrderNo: string
   amount: number
-  payProvider: 'WECHAT' | 'ALIPAY'
+  payProvider: 'WECHAT' | 'ALIPAY' | 'STRIPE'
   payMethod: 'NATIVE' | 'H5' | 'JSAPI' | 'MINIAPP' | 'APP'
   title?: string
   currency?: string

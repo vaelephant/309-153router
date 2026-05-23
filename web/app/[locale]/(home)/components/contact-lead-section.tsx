@@ -5,10 +5,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useI18n } from "@/lib/i18n-context"
+import { appendSourceToMessage } from "@/lib/traffic-source"
 
 type Status = "idle" | "loading" | "ok" | "err"
 
-export function ContactLeadSection() {
+type ContactLeadSectionProps = {
+  formName?: string
+  source?: string | null
+  titleKey?: string
+  subtitleKey?: string
+  pointKeys?: [string, string, string]
+}
+
+export function ContactLeadSection({
+  formName = "home_contact",
+  source = null,
+  titleKey = "contact.title",
+  subtitleKey = "contact.subtitle",
+  pointKeys = ["contact.point0", "contact.point1", "contact.point2"],
+}: ContactLeadSectionProps = {}) {
   const { t } = useI18n()
   const [phone, setPhone] = useState("")
   const [name, setName] = useState("")
@@ -27,8 +42,9 @@ export function ContactLeadSection() {
         body: JSON.stringify({
           phone,
           name: name || undefined,
-          message: message || undefined,
-          form_name: "home_contact",
+          message: appendSourceToMessage(message || undefined, source),
+          form_name: formName,
+          source: source || undefined,
         }),
       })
       const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string }
@@ -69,7 +85,7 @@ export function ContactLeadSection() {
                 marginBottom: "var(--space-4)",
               }}
             >
-              {t("contact.title")}
+              {t(titleKey)}
             </h2>
             <p
               style={{
@@ -80,7 +96,7 @@ export function ContactLeadSection() {
                 maxWidth: "520px",
               }}
             >
-              {t("contact.subtitle")}
+              {t(subtitleKey)}
             </p>
             <div
               className="rounded-2xl border p-6"
@@ -90,9 +106,9 @@ export function ContactLeadSection() {
               }}
             >
               <ul className="space-y-3 text-sm" style={{ color: "var(--color-text-body)" }}>
-                <li>• {t("contact.point0")}</li>
-                <li>• {t("contact.point1")}</li>
-                <li>• {t("contact.point2")}</li>
+                <li>• {t(pointKeys[0])}</li>
+                <li>• {t(pointKeys[1])}</li>
+                <li>• {t(pointKeys[2])}</li>
               </ul>
             </div>
           </div>

@@ -18,6 +18,7 @@ import type {
   CreateRechargeOrderResult,
   PaymentNotifyData,
 } from './recharge.types'
+import { payMethodForProvider } from './recharge.types'
 
 /**
  * 生成业务订单号
@@ -47,11 +48,12 @@ export async function createRechargeOrderService(
 
   let gatewayResponse
   try {
+    const payMethod = payMethodForProvider(payProvider)
     gatewayResponse = await client.createPayOrder({
       bizOrderNo,
       amount,
       payProvider,
-      payMethod: 'NATIVE', // 扫码支付
+      payMethod,
       title: `账户充值 - ¥${amount}`,
       notifyUrl,
       appId, // 如果配置了，则传递 app_id
@@ -69,20 +71,31 @@ export async function createRechargeOrderService(
     throw new Error(`创建支付订单失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 
-  // 保存订单到数据库
+  const qrcodeUrl = gatewayResponse.qrcode_url || ''
+  const payUrl = gatewayResponse.pay_url || ''
+
+  if (payProvider === 'STRIPE' && !payUrl) {
+    throw new Error('支付网关未返回 Stripe 支付链接')
+  }
+  if (payProvider !== 'STRIPE' && !qrcodeUrl) {
+    throw new Error('支付网关未返回支付二维码')
+  }
+
+  // 保存订单到数据库（Stripe 将 pay_url 存入 qrcode_url 便于排查，前端以 payUrl 跳转）
   const order = await createRechargeOrder({
     userId,
     bizOrderNo,
     amount: new Prisma.Decimal(amount),
     payProvider,
-    qrcodeUrl: gatewayResponse.qrcode_url || null,
+    qrcodeUrl: payProvider === 'STRIPE' ? payUrl : qrcodeUrl || null,
     gatewayOrderNo: gatewayResponse.gateway_order_no || null,
   })
 
   return {
     orderId: order.id,
     bizOrderNo: order.bizOrderNo,
-    qrcodeUrl: gatewayResponse.qrcode_url || '',
+    qrcodeUrl: payProvider === 'STRIPE' ? '' : qrcodeUrl,
+    payUrl: payProvider === 'STRIPE' ? payUrl : undefined,
     amount,
     payProvider,
   }

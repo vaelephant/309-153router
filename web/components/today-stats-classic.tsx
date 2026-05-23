@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useI18n } from "@/lib/i18n-context"
+import { applyPublicStatsDisplay } from "@/lib/public-stats-display"
 
 const DURATION_MS = 1200
 
@@ -87,11 +88,14 @@ export function TodayStatsClassic() {
       .finally(() => setLoading(false))
   }, [])
 
-  const requests = data?.requests ?? 0
-  const tokens = data?.tokens ?? 0
-  const runCountUp = !loading && data != null && inView
-  const displayRequests = useCountUp(requests, runCountUp)
-  const displayTokens = useCountUp(tokens, runCountUp)
+  const display = useMemo(() => {
+    if (data == null) return null
+    return applyPublicStatsDisplay(data)
+  }, [data])
+
+  const runCountUp = !loading && display != null && inView
+  const displayRequests = useCountUp(display?.requests ?? 0, runCountUp)
+  const displayTokens = useCountUp(display?.tokens ?? 0, runCountUp)
 
   const values = { requests: displayRequests, tokens: displayTokens }
 

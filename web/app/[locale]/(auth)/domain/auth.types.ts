@@ -11,6 +11,7 @@ export interface RegisterParams {
   phone: string
   password: string
   inviteCode?: string
+  trafficSource?: string
 }
 
 export interface LoginResult {

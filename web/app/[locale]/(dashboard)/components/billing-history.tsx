@@ -42,6 +42,7 @@ const STATUS_KEYS: Record<string, { key: string; variant: 'default' | 'secondary
 const PROVIDER_KEYS: Record<string, string> = {
   WECHAT: 'billing.providerWechat',
   ALIPAY: 'billing.providerAlipay',
+  STRIPE: 'billing.providerStripe',
 }
 
 const TYPE_KEYS: Record<string, string> = {

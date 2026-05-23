@@ -106,6 +106,26 @@ export async function register() {
     console.log(`  ${c.gray}  钉钉通知已关闭${c.reset}`)
   }
 
+  const contactWebhook = process.env.DINGTALK_CONTACT_WEBHOOK_URL?.trim()
+  const leadConfigured = Boolean(
+    process.env.LEAD_API_BASE_URL?.trim() &&
+      process.env.LEAD_API_KEY?.trim() &&
+      (process.env.LEAD_PROJECT_NAME?.trim() || process.env.LEAD_PROJECT_SLUG?.trim())
+  )
+  const contactUsesMain = !contactWebhook && dtEnabled && dtWebhook
+  if (contactWebhook) {
+    console.log(`  ${ok('留资钉钉：专用机器人 (DINGTALK_CONTACT_WEBHOOK_URL)')}`)
+    console.log(kv('DINGTALK_CONTACT_WEBHOOK_URL', contactWebhook.slice(0, 50) + '…'))
+  } else if (contactUsesMain) {
+    console.log(`  ${ok('留资钉钉：复用主机器人 (DINGTALK_WEBHOOK_URL)')}`)
+  } else if (!leadConfigured) {
+    console.log(
+      `  ${warn('留资不可用：请配置 DINGTALK_CONTACT_WEBHOOK_URL，或 DINGTALK_ENABLED + DINGTALK_WEBHOOK_URL')}`
+    )
+  } else {
+    console.log(`  ${c.gray}  留资钉钉未配置（仅写入线索 API）${c.reset}`)
+  }
+
   // ── Redis ────────────────────────────────────────────────
   console.log(`\n${c.bold}[6] Redis${c.reset}`)
   const redisHost = process.env.REDIS_HOST || 'localhost'

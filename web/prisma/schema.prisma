@@ -324,7 +324,7 @@ model RechargeOrder {
   gatewayOrderNo String?             @map("gateway_order_no") @db.VarChar(255)
   /// 充值金额（元）
   amount         Decimal             @db.Decimal(12, 4)
-  /// 支付渠道（WECHAT/ALIPAY）
+  /// 支付渠道（WECHAT/ALIPAY/STRIPE）
   payProvider    String              @map("pay_provider") @db.VarChar(20)
   /// 订单状态
   status         RechargeOrderStatus @default(pending)
