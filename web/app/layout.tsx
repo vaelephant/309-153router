@@ -100,12 +100,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning className="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t==='light'){d.classList.remove('dark');}else{d.classList.add('dark');}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`} style={{ fontFamily: 'var(--font-family-sans), var(--font-family-cn)' }}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
-          disableTransitionOnChange={false}
+          disableTransitionOnChange
+          storageKey="theme"
         >
           {children}
         </ThemeProvider>

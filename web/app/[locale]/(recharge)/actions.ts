@@ -3,7 +3,7 @@
 import { createRechargeOrderService } from './domain/recharge.service'
 import { createRechargeOrderSchema } from './domain/recharge.schema'
 import type { ActionResult } from '@/lib/actions/types'
-import type { CreateRechargeOrderResult } from './domain/recharge.types'
+import type { CreateRechargeOrderResult, PayProvider } from './domain/recharge.types'
 
 /**
  * 创建充值订单 Server Action
@@ -15,7 +15,7 @@ export async function createRechargeOrderAction(
   try {
     // 从 FormData 提取参数
     const amount = parseFloat(formData.get('amount') as string)
-    const payProvider = formData.get('payProvider') as 'WECHAT' | 'ALIPAY'
+    const payProvider = formData.get('payProvider') as PayProvider
     const userId = formData.get('userId') as string
 
     if (!userId) {

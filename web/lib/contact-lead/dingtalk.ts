@@ -1,14 +1,13 @@
 import crypto from "crypto"
-import { resolveIpGeoLabel } from "./ip-geo"
 
 /**
- * 联系表单 → 钉钉通知（独立机器人 / 独立群）
+ * 联系表单 → 钉钉通知
  *
- * 与 `lib/dingtalk.ts`（注册/登录播报）分开配置，避免两个业务进同一个群。
+ * 优先使用联系专用变量；未配置时回退到注册/登录同一套钉钉机器人：
+ * - DINGTALK_CONTACT_WEBHOOK_URL / DINGTALK_CONTACT_SECRET（可选，独立群）
+ * - 回退：DINGTALK_WEBHOOK_URL + DINGTALK_SECRET（需 DINGTALK_ENABLED=true，或未单独关闭 CONTACT）
  *
- * - DINGTALK_CONTACT_ENABLED：可选，false/0 关闭；未设置时只要有 Webhook 即发送
- * - DINGTALK_CONTACT_WEBHOOK_URL：联系表单专用 Webhook
- * - DINGTALK_CONTACT_SECRET：可选，该机器人若开启加签则填
+ * - DINGTALK_CONTACT_ENABLED：可选，false/0 强制关闭留资钉钉（即使已配主 Webhook）
  */
 
 export interface DingTalkTextMessage {
@@ -21,12 +20,41 @@ export interface DingTalkMarkdownMessage {
   markdown: { title: string; text: string }
 }
 
-function isContactDingTalkEnabled(): boolean {
-  const explicit = process.env.DINGTALK_CONTACT_ENABLED
-  if (explicit === "false" || explicit === "0") return false
-  if (explicit === "true" || explicit === "1") return true
-  // 未配置 CONTACT_ENABLED 时：有独立 Webhook 即视为启用
-  return Boolean(process.env.DINGTALK_CONTACT_WEBHOOK_URL?.trim())
+function isMainDingTalkEnabled(): boolean {
+  const enabled = process.env.DINGTALK_ENABLED
+  return enabled === "true" || enabled === "1"
+}
+
+/** 解析留资通知用的 Webhook（专用优先，否则复用 DINGTALK_WEBHOOK_URL） */
+function resolveContactWebhookConfig(): { url: string; secret?: string } | null {
+  if (process.env.DINGTALK_CONTACT_ENABLED === "false" || process.env.DINGTALK_CONTACT_ENABLED === "0") {
+    return null
+  }
+
+  const contactUrl = process.env.DINGTALK_CONTACT_WEBHOOK_URL?.trim()
+  if (contactUrl) {
+    return {
+      url: contactUrl,
+      secret: process.env.DINGTALK_CONTACT_SECRET?.trim() || undefined,
+    }
+  }
+
+  const mainUrl = process.env.DINGTALK_WEBHOOK_URL?.trim()
+  if (!mainUrl) return null
+
+  // 未配专用 Webhook 时：主机器人已启用则用于留资
+  if (isMainDingTalkEnabled() || process.env.DINGTALK_CONTACT_ENABLED === "true" || process.env.DINGTALK_CONTACT_ENABLED === "1") {
+    return {
+      url: mainUrl,
+      secret: process.env.DINGTALK_SECRET?.trim() || undefined,
+    }
+  }
+
+  return null
+}
+
+export function isContactDingTalkEnabled(): boolean {
+  return resolveContactWebhookConfig() !== null
 }
 
 function formatTimeCN(date: Date): string {
@@ -43,19 +71,18 @@ function formatTimeCN(date: Date): string {
 }
 
 function getContactWebhookUrl(): string | null {
-  if (!isContactDingTalkEnabled()) return null
-  const url = process.env.DINGTALK_CONTACT_WEBHOOK_URL?.trim()
-  if (!url) return null
+  const cfg = resolveContactWebhookConfig()
+  if (!cfg) return null
 
-  const secret = process.env.DINGTALK_CONTACT_SECRET?.trim()
-  if (!secret) return url
+  const secret = cfg.secret
+  if (!secret) return cfg.url
 
   const timestamp = Date.now()
   const stringToSign = `${timestamp}\n${secret}`
   const sign = encodeURIComponent(
     crypto.createHmac("sha256", secret).update(stringToSign).digest("base64")
   )
-  return `${url}&timestamp=${timestamp}&sign=${sign}`
+  return `${cfg.url}&timestamp=${timestamp}&sign=${sign}`
 }
 
 async function postToWebhook(payload: DingTalkTextMessage | DingTalkMarkdownMessage, timeoutMs: number) {
@@ -80,6 +107,66 @@ async function postToWebhook(payload: DingTalkTextMessage | DingTalkMarkdownMess
   }
 }
 
+const FORM_LABELS: Record<string, string> = {
+  ai_gateway_contact: "朋友圈着陆页",
+  home_contact: "官网联系表单",
+}
+
+function isLocalDomain(domain: string): boolean {
+  const d = domain.toLowerCase()
+  return (
+    d.includes("localhost") ||
+    d.startsWith("127.0.0.1") ||
+    d.startsWith("::1") ||
+    /^192\.168\.\d+\.\d+/.test(d) ||
+    /^10\.\d+\.\d+\.\d+/.test(d)
+  )
+}
+
+function formatNoteForDisplay(note: string, source: string): string | null {
+  const trimmed = note.trim()
+  if (!trimmed) return null
+  const sourceTag = source ? `[来源: ${source}]` : ""
+  if (trimmed === sourceTag) return null
+  if (source && trimmed.replace(sourceTag, "").trim() === "") return null
+  return trimmed.replace(/^\[来源:[^\]]+\]\s*/i, "").trim() || null
+}
+
+function shortenUserAgent(ua: string): string {
+  const s = ua.trim()
+  if (s.length <= 120) return s
+  return `${s.slice(0, 117)}…`
+}
+
+function buildContactNotifyText(params: {
+  phone: string
+  createdAt: Date
+  formName?: string | null
+  source?: string | null
+  note?: string | null
+  domain?: string
+  clientIp?: string
+  userAgent?: string
+}): string {
+  const formKey = params.formName?.trim() || ""
+  const formLabel = FORM_LABELS[formKey] || formKey || "网站留资"
+  const source = params.source?.trim() || ""
+  const note = formatNoteForDisplay(params.note?.trim() || "", source)
+  const time = formatTimeCN(params.createdAt)
+  const domain = params.domain?.trim() || ""
+  const ip = params.clientIp?.trim() || "未知"
+  const ua = params.userAgent?.trim() ? shortenUserAgent(params.userAgent.trim()) : "未知"
+
+  const lines = [`【OptRouter】${formLabel}`, `手机：${params.phone}`]
+  if (source) lines.push(`渠道：${source}`)
+  if (note) lines.push(`备注：${note}`)
+  if (domain && !isLocalDomain(domain)) lines.push(`站点：${domain}`)
+  lines.push(`IP：${ip}`)
+  lines.push(`UA：${ua}`)
+  lines.push(`时间：${time}`)
+  return lines.join("\n")
+}
+
 export async function notifyContactSubmitted(params: {
   domain?: string
   phone: string
@@ -87,47 +174,20 @@ export async function notifyContactSubmitted(params: {
   createdAt: Date
   clientIp?: string
   formName?: string | null
+  source?: string | null
+  note?: string | null
 }): Promise<void> {
-  const ua = params.userAgent?.trim() || "Unknown"
-  const time = formatTimeCN(params.createdAt)
-  const domain = params.domain?.trim() || "unknown"
-  const ip = params.clientIp?.trim() || "unknown"
-  const formLabel = params.formName?.trim() || "（未标注）"
+  const content = buildContactNotifyText({
+    phone: params.phone,
+    createdAt: params.createdAt,
+    formName: params.formName,
+    source: params.source,
+    note: params.note,
+    domain: params.domain,
+    clientIp: params.clientIp,
+    userAgent: params.userAgent,
+  })
 
-  let geo = "未知"
-  if (ip && ip !== "unknown") {
-    geo = await resolveIpGeoLabel(ip)
-  }
-
-  const title = `联系我们新提交 - ${formLabel} - ${domain}`
-  const text = [
-    `### 联系我们新提交`,
-    ``,
-    `- **来源域名**：${domain}`,
-    `- **表单**：${formLabel}`,
-    `- **手机号**：${params.phone}`,
-    `- **IP地址**：${ip}`,
-    `- **地理位置**：${geo}`,
-    `- **UA**：${ua}`,
-    `- **提交时间**：${time}`,
-  ].join("\n")
-
-  try {
-    await postToWebhook(
-      { msgtype: "markdown", markdown: { title, text } },
-      2500
-    )
-  } catch {
-    const fallback = [
-      `【${domain}】联系我们新提交`,
-      `表单：${formLabel}`,
-      `手机号：${params.phone}`,
-      `IP：${ip}`,
-      `位置：${geo}`,
-      `UA：${ua}`,
-      `时间：${time}`,
-    ].join("\n")
-    await postToWebhook({ msgtype: "text", text: { content: fallback } }, 2500)
-  }
+  await postToWebhook({ msgtype: "text", text: { content } }, 2500)
 }
 

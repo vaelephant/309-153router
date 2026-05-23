@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>朋友圈海报 · OptRouter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      font-family: system-ui, "PingFang SC", sans-serif;
+    }
+    .tip {
+      color: #888;
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 12px;
+      max-width: 320px;
+      line-height: 1.6;
+    }
+    .frame {
+      width: min(100%, 360px);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: middle;
+    }
+    .missing {
+      aspect-ratio: 9/16;
+      background: #1e293b;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <p class="tip">把 GPT / 设计师导出的海报放到同目录 <strong>wechat-moments-poster.png</strong>，刷新本页后截图发圈。</p>
+  <div class="frame">
+    <img
+      id="poster"
+      src="./wechat-moments-poster.png"
+      alt="OptRouter 朋友圈海报"
+      onerror="this.style.display='none'; document.getElementById('ph').style.display='flex'"
+    />
+    <div id="ph" class="missing" style="display:none">
+      请放置图片：<br /><code>web/public/materials/wechat-moments-poster.png</code><br /><br />
+      建议 1080×1920，用 GPT 成图，不要用 HTML 拼版。
+    </div>
+  </div>
+</body>
+</html>

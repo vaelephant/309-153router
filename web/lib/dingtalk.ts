@@ -118,7 +118,8 @@ export function notifyUserRegister(
   phone: string,
   inviteCode?: string | null,
   userAgent?: string | null,
-  ipAddress?: string | null
+  ipAddress?: string | null,
+  trafficSource?: string | null
 ): Promise<boolean> {
   const lines = [
     `🔔 新用户注册通知`,
@@ -126,6 +127,7 @@ export function notifyUserRegister(
     `📱 手机号：${phone}`,
     `⏰ 注册时间：${formatChinaTime()}`,
     `🎫 邀请码：${inviteCode || "无"}`,
+    `📣 来源：${trafficSource || "无"}`,
   ]
 
   if (userAgent) lines.push(`💻 设备信息：${userAgent}`)

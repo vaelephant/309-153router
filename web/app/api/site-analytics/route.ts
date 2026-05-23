@@ -11,6 +11,8 @@ interface PageView {
   ipAddress?: string;
   referer: string;
   timestamp: string;
+  source?: string;
+  campaign?: string;
 }
 
 interface PageViewsData {
@@ -34,10 +36,10 @@ function isAbortedError(error: unknown): boolean {
 export async function POST(request: NextRequest) {
   try {
     const headersList = await headers();
-    let data: { path?: string };
+    let data: { path?: string; source?: string; campaign?: string };
     try {
       const raw = await request.text();
-      data = raw ? (JSON.parse(raw) as { path?: string }) : {};
+      data = raw ? (JSON.parse(raw) as { path?: string; source?: string; campaign?: string }) : {};
     } catch {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
@@ -46,6 +48,11 @@ export async function POST(request: NextRequest) {
     if (!pathStr) {
       return NextResponse.json({ error: 'Missing path' }, { status: 400 });
     }
+
+    const source =
+      typeof data.source === 'string' && data.source.trim() ? data.source.trim() : undefined;
+    const campaign =
+      typeof data.campaign === 'string' && data.campaign.trim() ? data.campaign.trim() : undefined;
 
     const userAgent = headersList.get('user-agent') || '';
     const referer = headersList.get('referer') || '';
@@ -73,6 +80,8 @@ export async function POST(request: NextRequest) {
       ipAddress,
       referer,
       timestamp: new Date().toISOString(),
+      ...(source ? { source } : {}),
+      ...(campaign ? { campaign } : {}),
     });
 
     await fs.writeFile(DATA_FILE, JSON.stringify(fileData, null, 2));

@@ -2,13 +2,23 @@
  * 充值模块类型定义
  */
 
+/** 支付渠道（与 PayRouter pay_provider 一致） */
+export type PayProvider = 'WECHAT' | 'ALIPAY' | 'STRIPE'
+
+export const PAY_PROVIDERS: readonly PayProvider[] = ['WECHAT', 'ALIPAY', 'STRIPE'] as const
+
+/** 按渠道选择 PayRouter pay_method */
+export function payMethodForProvider(provider: PayProvider): 'NATIVE' | 'H5' {
+  return provider === 'STRIPE' ? 'H5' : 'NATIVE'
+}
+
 export interface RechargeOrder {
   id: string
   userId: string
   bizOrderNo: string
   gatewayOrderNo: string | null
   amount: number
-  payProvider: 'WECHAT' | 'ALIPAY'
+  payProvider: PayProvider
   status: 'pending' | 'paid' | 'failed' | 'canceled'
   qrcodeUrl: string | null
   processed: boolean
@@ -20,15 +30,18 @@ export interface RechargeOrder {
 export interface CreateRechargeOrderParams {
   userId: string
   amount: number
-  payProvider: 'WECHAT' | 'ALIPAY'
+  payProvider: PayProvider
 }
 
 export interface CreateRechargeOrderResult {
   orderId: string
   bizOrderNo: string
+  /** 微信/支付宝扫码 URL；Stripe 为空 */
   qrcodeUrl: string
+  /** Stripe Checkout 等跳转 URL */
+  payUrl?: string
   amount: number
-  payProvider: 'WECHAT' | 'ALIPAY'
+  payProvider: PayProvider
 }
 
 export interface PaymentNotifyData {
@@ -37,7 +50,7 @@ export interface PaymentNotifyData {
   status: string
   amount: number
   sign: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 // 充值金额配置

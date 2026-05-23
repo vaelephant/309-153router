@@ -12,10 +12,11 @@ const Features = dynamic(
   () => import("./features").then((m) => ({ default: m.Features })),
   { loading: () => <SectionSkeleton className="h-64" /> }
 )
-const TodayStatsClassic = dynamic(
-  () => import("@/components/today-stats-classic").then((m) => ({ default: m.TodayStatsClassic })),
-  { loading: () => <SectionSkeleton className="h-32" /> }
-)
+// 首页今日统计（真实+基底）暂下线，恢复时取消注释
+// const TodayStatsClassic = dynamic(
+//   () => import("@/components/today-stats-classic").then((m) => ({ default: m.TodayStatsClassic })),
+//   { loading: () => <SectionSkeleton className="h-32" /> }
+// )
 const ValueOutcomes = dynamic(
   () => import("./value-outcomes").then((m) => ({ default: m.ValueOutcomes })),
   { loading: () => <SectionSkeleton className="h-48" /> }
@@ -66,7 +67,7 @@ export function HomeDeferredSections() {
     <WaterfallReveal>
       <PainPoints />
       <Features />
-      <TodayStatsClassic />
+      {/* <TodayStatsClassic /> */}
       <ValueOutcomes />
       <Stats />
       <ComparisonSection />

@@ -8,6 +8,7 @@ import { QrCode, X, CheckCircle2, Clock } from "lucide-react"
 import QRCode from "react-qr-code"
 import { toast } from "sonner"
 import { useI18n } from "@/lib/i18n-context"
+import type { CreateRechargeOrderResult } from "../domain/recharge.types"
 
 /** 倒计时总秒数：10 分钟 */
 const COUNTDOWN_SECONDS = 10 * 60
@@ -15,13 +16,10 @@ const COUNTDOWN_SECONDS = 10 * 60
 const POLL_INTERVAL_MS = 3000
 
 interface PaymentQrcodeProps {
-  order: {
-    orderId: string
-    bizOrderNo: string
-    qrcodeUrl: string
-    amount: number
-    payProvider: 'WECHAT' | 'ALIPAY'
-  }
+  order: Pick<
+    CreateRechargeOrderResult,
+    'orderId' | 'bizOrderNo' | 'qrcodeUrl' | 'amount' | 'payProvider'
+  >
   onClose: () => void
 }
 
@@ -87,7 +85,12 @@ export function PaymentQrcode({ order, onClose }: PaymentQrcodeProps) {
   const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, '0')
   const seconds = String(secondsLeft % 60).padStart(2, '0')
 
-  const providerName = order.payProvider === 'WECHAT' ? t("recharge.wechatShort") : t("recharge.alipayShort")
+  const providerName =
+    order.payProvider === 'WECHAT'
+      ? t("recharge.wechatShort")
+      : order.payProvider === 'ALIPAY'
+        ? t("recharge.alipayShort")
+        : t("recharge.stripeShort")
   const timeStr = `${minutes}:${seconds}`
 
   return (
