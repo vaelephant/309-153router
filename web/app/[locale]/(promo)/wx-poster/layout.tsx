@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
-import { SITE_URL } from "@/lib/seo-home"
+import { getSiteUrl } from "@/lib/site-url"
 
-const OG_IMAGE = `${SITE_URL}/materials/wechat-moments-poster.png`
+const siteUrl = getSiteUrl()
+const OG_IMAGE = `${siteUrl}/materials/wechat-moments-poster.png`
 
 export const metadata: Metadata = {
   title: "OptRouter · 一个接口接入多个大模型",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   openGraph: {
     type: "website",
-    url: `${SITE_URL}/zh/wx-poster`,
+    url: `${siteUrl}/zh/wx-poster`,
     siteName: "OptRouter",
     title: "OptRouter · 一个接口接入多个大模型",
     description: "兼容 OpenAI API · 智能路由 · 自动切换",

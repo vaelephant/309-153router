@@ -1,9 +1,37 @@
-import fs from "fs"
-import path from "path"
-import matter from "gray-matter"
+import type { BlogArticle, BlogCategory, BlogFaq } from './news/article-types'
+import { getBlogCoverUrl } from './news/blog-cover'
+import {
+  getAllBlogArticles,
+  getBlogBySlug,
+  getLatestBlogArticles,
+  getRelatedBlogArticles,
+  getAllBlogSlugs,
+  getBlogByCategory,
+} from './news/blog-queries'
 
-const newsDirectory = path.join(process.cwd(), "content/news")
+export type { BlogArticle, BlogCategory, BlogFaq } from './news/article-types'
+export {
+  BLOG_CATEGORIES,
+  BLOG_CATEGORY_LABELS,
+  BLOG_CATEGORY_DESCRIPTIONS,
+} from './news/blog-categories'
+export {
+  getAllBlogArticles,
+  getBlogBySlug,
+  getLatestBlogArticles,
+  getRelatedBlogArticles,
+  getAllBlogSlugs,
+  getBlogByCategory,
+} from './news/blog-queries'
+export { getBlogCoverUrl } from './news/blog-cover'
+export {
+  buildBlogArticleJsonLd,
+  buildBlogFaqJsonLd,
+  buildBlogMetadata,
+} from './news/blog-json-ld'
+export { getBlogSitemapEntries } from './news/sitemap-entries'
 
+/** @deprecated 兼容旧组件，等同 BlogArticle 的简化视图 */
 export interface NewsItem {
   slug: string
   title: string
@@ -11,72 +39,56 @@ export interface NewsItem {
   coverImage: string
   excerpt: string
   content: string
-  /** 分类/标签，用于卡片底部展示 */
   tags?: string[]
-  /** 阅读时长（分钟），可选，不填则根据 content 长度估算 */
   readTimeMinutes?: number
+  faqs?: BlogFaq[]
+  category?: string
+  source?: 'markdown'
 }
 
-function ensureNewsDir() {
-  if (!fs.existsSync(newsDirectory)) {
-    fs.mkdirSync(newsDirectory, { recursive: true })
+function blogToNewsItem(article: BlogArticle): NewsItem {
+  return {
+    slug: article.slug,
+    title: article.title,
+    date: article.publishedAt,
+    coverImage: getBlogCoverUrl(article),
+    excerpt: article.summary,
+    content: article.content,
+    tags: article.tags.length ? article.tags : undefined,
+    readTimeMinutes: article.readingMinutes,
+    faqs: article.faqs.length ? article.faqs : undefined,
+    category: article.category,
+    source: 'markdown',
   }
 }
 
 export async function getAllNews(): Promise<NewsItem[]> {
-  ensureNewsDir()
-  const fileNames = fs.readdirSync(newsDirectory)
-  const allNews = fileNames
-    .filter((fileName) => fileName.endsWith(".md") && fileName !== "README.md")
-    .map((fileName) => {
-      const slug = fileName.replace(/\.md$/, "")
-      const fullPath = path.join(newsDirectory, fileName)
-      const fileContents = fs.readFileSync(fullPath, "utf8")
-      const { data, content } = matter(fileContents)
-      const tags = Array.isArray(data.tags) ? data.tags : (data.tags ? [data.tags] : [])
-      let readTimeMinutes = data.readTimeMinutes
-      if (readTimeMinutes == null && content) {
-        const wordCount = content.replace(/\s/g, "").length
-        readTimeMinutes = Math.max(1, Math.ceil(wordCount / 400))
-      }
-      return {
-        slug,
-        title: data.title ?? "",
-        date: data.date ?? "",
-        coverImage: data.coverImage ?? "/icon.svg",
-        excerpt: data.excerpt ?? "",
-        content,
-        tags: tags.length ? tags : undefined,
-        readTimeMinutes,
-      }
-    })
-  return allNews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  return getAllBlogArticles().map(blogToNewsItem)
 }
 
 export async function getNewsItem(slug: string): Promise<NewsItem | null> {
-  try {
-    ensureNewsDir()
-    const fullPath = path.join(newsDirectory, `${slug}.md`)
-    if (!fs.existsSync(fullPath)) return null
-    const fileContents = fs.readFileSync(fullPath, "utf8")
-    const { data, content } = matter(fileContents)
-    const tags = Array.isArray(data.tags) ? data.tags : (data.tags ? [data.tags] : [])
-    let readTimeMinutes = data.readTimeMinutes
-    if (readTimeMinutes == null && content) {
-      const wordCount = content.replace(/\s/g, "").length
-      readTimeMinutes = Math.max(1, Math.ceil(wordCount / 400))
-    }
-    return {
-      slug,
-      title: data.title ?? "",
-      date: data.date ?? "",
-      coverImage: data.coverImage ?? "/icon.svg",
-      excerpt: data.excerpt ?? "",
-      content,
-      tags: tags.length ? tags : undefined,
-      readTimeMinutes,
-    }
-  } catch {
-    return null
-  }
+  const article = getBlogBySlug(slug)
+  return article ? blogToNewsItem(article) : null
+}
+
+export async function getBlogArticle(slug: string): Promise<BlogArticle | null> {
+  return getBlogBySlug(slug)
+}
+
+export async function getMergedBlogArticles(): Promise<BlogArticle[]> {
+  return getAllBlogArticles()
+}
+
+export async function getLatestMergedBlogArticles(
+  limit: number
+): Promise<BlogArticle[]> {
+  return getLatestBlogArticles(limit)
+}
+
+export async function getRelatedArticles(
+  currentSlug: string,
+  category: BlogCategory,
+  limit: number
+): Promise<BlogArticle[]> {
+  return getRelatedBlogArticles(currentSlug, category, limit)
 }

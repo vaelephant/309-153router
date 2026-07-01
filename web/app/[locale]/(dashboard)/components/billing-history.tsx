@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Wallet, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { getCurrentUserId } from "@/lib/auth-client"
 import { useI18n } from "@/lib/i18n-context"
+import { formatRechargeMoney, stripeUsdToCreditCny } from "@/app/[locale]/(recharge)/domain/recharge.types"
 
 interface RechargeOrder {
   id: string
@@ -159,8 +160,18 @@ export function BillingHistory() {
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
                           <p className="text-base font-semibold text-green-600">
-                            +¥{order.amount.toFixed(2)}
+                            +{formatRechargeMoney(
+                              order.payProvider as 'WECHAT' | 'ALIPAY' | 'STRIPE',
+                              order.amount
+                            )}
                           </p>
+                          {order.payProvider === 'STRIPE' && order.status === 'paid' && (
+                            <p className="text-xs text-muted-foreground">
+                              {t('billing.rechargeCreditCny', {
+                                cny: stripeUsdToCreditCny(order.amount).toFixed(2),
+                              })}
+                            </p>
+                          )}
                           <Badge variant={status.variant} className="text-xs">
                             {label}
                           </Badge>

@@ -25,6 +25,7 @@ model User {
   inviteRelationsAsInviter InviteRelation[]     @relation("invite_relation_inviter_idTousers")
   inviteRewardRecords      InviteRewardRecord[]
   rechargeOrders           RechargeOrder[]
+  paymentMethods           PaymentMethod[]
   subscriptions            Subscription[]
   transactions             Transaction[]
   usageLogs                UsageLog[]
@@ -208,6 +209,37 @@ model Subscription {
 
   @@index([userId, status])
   @@map("subscriptions")
+}
+
+/// 用户绑定的支付方式（脱敏，P1 Stripe）
+model PaymentMethod {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  payProvider         String   @default("STRIPE") @map("pay_provider") @db.VarChar(20)
+  gatewayPmId         String   @map("gateway_pm_id") @db.VarChar(64)
+  gatewayCustomerId   String?  @map("gateway_customer_id") @db.VarChar(64)
+  brand               String?  @db.VarChar(32)
+  last4               String?  @db.VarChar(4)
+  expMonth            Int?     @map("exp_month")
+  expYear             Int?     @map("exp_year")
+  isDefault           Boolean  @default(false) @map("is_default")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gatewayPmId])
+  @@index([userId])
+  @@map("payment_methods")
+}
+
+/// PayRouter Billing Webhook 幂等
+model BillingWebhookEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @unique @map("event_id") @db.VarChar(128)
+  eventType   String   @map("event_type") @db.VarChar(64)
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("billing_webhook_events")
 }
 
 model UserLoginLog {

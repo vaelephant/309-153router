@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-export const SITE_URL = 'https://optrouter.com'
+import { getSiteUrl } from '@/lib/site-url'
 
 const OG_LOCALE: Record<string, string> = {
   zh: 'zh_CN',
@@ -30,9 +30,11 @@ type HomeMessages = {
 }
 
 export function buildHomeMetadata(locale: string, messages: HomeMessages): Metadata {
+  const siteUrl = getSiteUrl()
   const home = messages.home
-  const canonical = `${SITE_URL}/${locale}`
+  const canonical = `${siteUrl}/${locale}`
   const ogLocale = OG_LOCALE[locale] ?? OG_LOCALE.zh
+  const ogImage = `${siteUrl}/opengraph-image`
 
   return {
     title: home.title,
@@ -40,10 +42,10 @@ export function buildHomeMetadata(locale: string, messages: HomeMessages): Metad
     alternates: {
       canonical,
       languages: {
-        'zh-CN': `${SITE_URL}/zh`,
-        en: `${SITE_URL}/en`,
-        ja: `${SITE_URL}/ja`,
-        'x-default': `${SITE_URL}/zh`,
+        'zh-CN': `${siteUrl}/zh`,
+        en: `${siteUrl}/en`,
+        ja: `${siteUrl}/ja`,
+        'x-default': `${siteUrl}/zh`,
       },
     },
     openGraph: {
@@ -56,7 +58,7 @@ export function buildHomeMetadata(locale: string, messages: HomeMessages): Metad
       description: home.description,
       images: [
         {
-          url: `${SITE_URL}/og-image.png`,
+          url: ogImage,
           width: 1200,
           height: 630,
           alt: home.title,
@@ -67,14 +69,15 @@ export function buildHomeMetadata(locale: string, messages: HomeMessages): Metad
       card: 'summary_large_image',
       title: home.title,
       description: home.description,
-      images: [`${SITE_URL}/og-image.png`],
+      images: [ogImage],
     },
   }
 }
 
 export function buildHomeJsonLd(locale: string, messages: HomeMessages) {
+  const siteUrl = getSiteUrl()
   const { home, faq, common } = messages
-  const pageUrl = `${SITE_URL}/${locale}`
+  const pageUrl = `${siteUrl}/${locale}`
 
   const faqEntities = [
     { q: faq.q0, a: faq.a0 },
@@ -94,10 +97,10 @@ export function buildHomeJsonLd(locale: string, messages: HomeMessages) {
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': `${SITE_URL}/#organization`,
+        '@id': `${siteUrl}/#organization`,
         name: common.siteName,
-        url: SITE_URL,
-        logo: { '@type': 'ImageObject', url: `${SITE_URL}/icon.svg` },
+        url: siteUrl,
+        logo: { '@type': 'ImageObject', url: `${siteUrl}/icon.svg` },
         description: home.description,
       },
       {
@@ -106,7 +109,7 @@ export function buildHomeJsonLd(locale: string, messages: HomeMessages) {
         url: pageUrl,
         name: common.siteName,
         inLanguage: locale,
-        publisher: { '@id': `${SITE_URL}/#organization` },
+        publisher: { '@id': `${siteUrl}/#organization` },
       },
       {
         '@type': 'SoftwareApplication',

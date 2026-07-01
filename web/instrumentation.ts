@@ -106,6 +106,19 @@ export async function register() {
     console.log(`  ${c.gray}  钉钉通知已关闭${c.reset}`)
   }
 
+  const rechargeWebhook = process.env.DINGTALK_RECHARGE_WEBHOOK_URL?.trim()
+  const rechargeEnabled =
+    process.env.DINGTALK_RECHARGE_ENABLED === 'true' ||
+    process.env.DINGTALK_RECHARGE_ENABLED === '1'
+  if (rechargeEnabled && rechargeWebhook) {
+    console.log(`  ${ok('充值钉钉：专用机器人 (DINGTALK_RECHARGE_*)')}`)
+    console.log(kv('DINGTALK_RECHARGE_WEBHOOK_URL', rechargeWebhook.slice(0, 50) + '…'))
+  } else if (rechargeEnabled) {
+    console.log(`  ${warn('充值钉钉已启用但未配置 DINGTALK_RECHARGE_WEBHOOK_URL')}`)
+  } else {
+    console.log(`  ${c.gray}  充值钉钉未启用（与注册/登录独立）${c.reset}`)
+  }
+
   const contactWebhook = process.env.DINGTALK_CONTACT_WEBHOOK_URL?.trim()
   const leadConfigured = Boolean(
     process.env.LEAD_API_BASE_URL?.trim() &&
@@ -124,6 +137,23 @@ export async function register() {
     )
   } else {
     console.log(`  ${c.gray}  留资钉钉未配置（仅写入线索 API）${c.reset}`)
+  }
+
+  const newsWebhook = process.env.DINGTALK_NEWS_WEBHOOK_URL?.trim()
+  const newsSecret = process.env.DINGTALK_NEWS_SECRET?.trim()
+  const newsEnabled =
+    process.env.DINGTALK_NEWS_ENABLED === 'true' ||
+    process.env.DINGTALK_NEWS_ENABLED === '1' ||
+    Boolean(newsWebhook && newsSecret)
+  if (newsEnabled && newsWebhook && newsSecret) {
+    console.log(`  ${ok('新闻钉钉：专用机器人 (DINGTALK_NEWS_*)')}`)
+    console.log(kv('DINGTALK_NEWS_WEBHOOK_URL', newsWebhook.slice(0, 50) + '…'))
+  } else if (newsEnabled) {
+    console.log(
+      `  ${warn('新闻钉钉：需同时配置 DINGTALK_NEWS_WEBHOOK_URL 与 DINGTALK_NEWS_SECRET')}`
+    )
+  } else {
+    console.log(`  ${c.gray}  新闻钉钉未启用（AI 生成资讯播报）${c.reset}`)
   }
 
   // ── Redis ────────────────────────────────────────────────

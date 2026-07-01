@@ -1,32 +1,34 @@
 import type { MetadataRoute } from 'next'
 
-const SITE_URL = 'https://optrouter.com'
+import { getBlogSitemapEntries } from '@/lib/news'
+import { publicRoutes } from '@/lib/seo'
+import { getSiteUrl } from '@/lib/site-url'
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const siteUrl = getSiteUrl()
+  const now = new Date()
+
+  const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
+    url: `${siteUrl}${route.path === '/' ? '' : route.path}`,
+    lastModified: now,
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
+  }))
+
   return [
+    ...staticEntries,
     {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: `${SITE_URL}/promo`,
-      lastModified: new Date(),
+      url: `${siteUrl}/agents.json`,
+      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${SITE_URL}/login`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
+      url: `${siteUrl}/llms.txt`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
     },
-    {
-      url: `${SITE_URL}/register`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
+    ...getBlogSitemapEntries(),
   ]
 }

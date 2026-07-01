@@ -1,7 +1,6 @@
 /**
  * 充值模块业务逻辑层
  */
-import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import {
   createRechargeOrder,
@@ -9,16 +8,59 @@ import {
   findRechargeOrderByBizOrderNo,
   updateRechargeOrderStatus,
 } from './recharge.repo'
-import { getPaymentGatewayClient } from '@/lib/payment-gateway/client'
+import {
+  getPaymentGatewayAppId,
+  getPaymentGatewayClient,
+  PaymentGatewayError,
+} from '@/lib/payment-gateway/client'
 import { verifyNotifySign } from '@/lib/payment-gateway/notify-signature'
 import { prisma } from '@/lib/db'
 import { grantInviteRechargeReward } from '../../(invite)/domain/invite.service'
+import { getPaymentMethodsForUser } from '../../(billing)/domain/billing.service'
+import { RechargeError } from './recharge.errors'
+import { notifyRechargeSuccess } from '@/lib/recharge/dingtalk'
 import type {
   CreateRechargeOrderParams,
   CreateRechargeOrderResult,
   PaymentNotifyData,
 } from './recharge.types'
-import { payMethodForProvider } from './recharge.types'
+import {
+  payMethodForProvider,
+  STRIPE_CHARGE_CURRENCY,
+  stripeUsdToCreditCny,
+} from './recharge.types'
+import { DEFAULT_LOCALE, isValidLocale } from '@/lib/i18n'
+
+/**
+ * Stripe Checkout 成功/取消回跳（仅 STRIPE_RECHARGE_ALLOW_CHECKOUT=true 兜底）
+ */
+function buildStripeCheckoutMeta(locale?: string): Record<string, string> {
+  const successOverride = process.env.STRIPE_RECHARGE_SUCCESS_URL?.trim()
+  const cancelOverride = process.env.STRIPE_RECHARGE_CANCEL_URL?.trim()
+  if (successOverride && cancelOverride) {
+    return {
+      stripe_success_url: successOverride,
+      stripe_cancel_url: cancelOverride,
+    }
+  }
+
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
+  const loc = locale && isValidLocale(locale) ? locale : DEFAULT_LOCALE
+  const rechargePath = `/${loc}/recharge`
+
+  return {
+    stripe_success_url: `${baseUrl}${rechargePath}?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
+    stripe_cancel_url: `${baseUrl}${rechargePath}?stripe=cancel`,
+  }
+}
+
+function isStripeCheckoutFallbackEnabled(): boolean {
+  return process.env.STRIPE_RECHARGE_ALLOW_CHECKOUT === 'true'
+}
+
+function notifyUrl(): string {
+  return `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/recharge/notify`
+}
 
 /**
  * 生成业务订单号
@@ -29,22 +71,176 @@ function generateBizOrderNo(): string {
   return `RECHARGE_${timestamp}_${random}`
 }
 
+async function resolveDefaultStripePaymentMethod(userId: string) {
+  const methods = await getPaymentMethodsForUser(userId)
+  return methods.find((m) => m.isDefault) ?? methods[0] ?? null
+}
+
+async function createStripeCheckoutRecharge(
+  params: CreateRechargeOrderParams
+): Promise<CreateRechargeOrderResult> {
+  const { userId, amount, locale } = params
+  const bizOrderNo = generateBizOrderNo()
+  const client = getPaymentGatewayClient()
+  const appId = getPaymentGatewayAppId()
+
+  let gatewayResponse
+  try {
+    gatewayResponse = await client.createPayOrder({
+      bizOrderNo,
+      amount,
+      payProvider: 'STRIPE',
+      payMethod: payMethodForProvider('STRIPE'),
+      currency: STRIPE_CHARGE_CURRENCY,
+      title: `账户充值 - $${amount}`,
+      notifyUrl: notifyUrl(),
+      appId,
+      meta: buildStripeCheckoutMeta(locale),
+    })
+  } catch (error) {
+    console.error('Stripe Checkout 兜底创建订单失败:', error)
+    throw new Error(`创建支付订单失败: ${error instanceof Error ? error.message : '未知错误'}`)
+  }
+
+  const payUrl = gatewayResponse.pay_url || ''
+  if (!payUrl) {
+    throw new Error('支付网关未返回 Stripe 支付链接')
+  }
+
+  const order = await createRechargeOrder({
+    userId,
+    bizOrderNo,
+    amount: new Prisma.Decimal(amount),
+    payProvider: 'STRIPE',
+    qrcodeUrl: payUrl,
+    gatewayOrderNo: gatewayResponse.gateway_order_no || null,
+  })
+
+  return {
+    orderId: order.id,
+    bizOrderNo: order.bizOrderNo,
+    qrcodeUrl: '',
+    payUrl,
+    amount,
+    payProvider: 'STRIPE',
+  }
+}
+
+async function createStripeSavedCardRecharge(
+  params: CreateRechargeOrderParams
+): Promise<CreateRechargeOrderResult> {
+  const { userId, amount } = params
+  const defaultPm = await resolveDefaultStripePaymentMethod(userId)
+
+  if (!defaultPm) {
+    if (isStripeCheckoutFallbackEnabled()) {
+      return createStripeCheckoutRecharge(params)
+    }
+    throw new RechargeError(
+      'NEED_BIND_CARD',
+      '请先在账单页绑定银行卡后再使用 Stripe 充值'
+    )
+  }
+
+  const bizOrderNo = generateBizOrderNo()
+  const client = getPaymentGatewayClient()
+  const appId = getPaymentGatewayAppId()
+
+  const order = await createRechargeOrder({
+    userId,
+    bizOrderNo,
+    amount: new Prisma.Decimal(amount),
+    payProvider: 'STRIPE',
+    qrcodeUrl: null,
+    gatewayOrderNo: null,
+  })
+
+  let charge
+  try {
+    charge = await client.createBillingCharge({
+      bizUserId: userId,
+      bizOrderNo,
+      amount,
+      currency: STRIPE_CHARGE_CURRENCY,
+      paymentMethodId: defaultPm.paymentMethodId,
+      idempotencyKey: `recharge-${bizOrderNo}`,
+      notifyUrl: notifyUrl(),
+      title: `账户充值 - $${amount}`,
+      appId,
+    })
+  } catch (error) {
+    await updateRechargeOrderStatus(order.id, {
+      status: 'failed',
+      processed: true,
+    })
+
+    if (error instanceof PaymentGatewayError) {
+      if (error.code === 'NO_CUSTOMER' || error.code === 'NO_PAYMENT_METHOD') {
+        throw new RechargeError(
+          'NEED_BIND_CARD',
+          '请先在账单页绑定银行卡后再使用 Stripe 充值'
+        )
+      }
+      throw new Error(error.message)
+    }
+    throw error
+  }
+
+  await updateRechargeOrderStatus(order.id, {
+    gatewayOrderNo: charge.gateway_order_no,
+  })
+
+  if (charge.status === 'succeeded') {
+    const check = await checkPaymentStatusService(order.id)
+    return {
+      orderId: order.id,
+      bizOrderNo: order.bizOrderNo,
+      qrcodeUrl: '',
+      amount,
+      payProvider: 'STRIPE',
+      stripeChargeStatus: 'succeeded',
+      paid: check.paid,
+    }
+  }
+
+  if (charge.status === 'requires_action') {
+    return {
+      orderId: order.id,
+      bizOrderNo: order.bizOrderNo,
+      qrcodeUrl: '',
+      amount,
+      payProvider: 'STRIPE',
+      stripeChargeStatus: 'requires_action',
+      clientSecret: charge.client_secret,
+      requiresAction: true,
+    }
+  }
+
+  return {
+    orderId: order.id,
+    bizOrderNo: order.bizOrderNo,
+    qrcodeUrl: '',
+    amount,
+    payProvider: 'STRIPE',
+    stripeChargeStatus: 'pending',
+  }
+}
+
 /**
  * 创建充值订单
  */
 export async function createRechargeOrderService(
   params: CreateRechargeOrderParams
 ): Promise<CreateRechargeOrderResult> {
-  const { userId, amount, payProvider } = params
+  const { userId, amount, payProvider, locale } = params
 
-  // 生成业务订单号
+  if (payProvider === 'STRIPE') {
+    return createStripeSavedCardRecharge(params)
+  }
+
   const bizOrderNo = generateBizOrderNo()
-
-  // 调用支付网关创建订单
   const client = getPaymentGatewayClient()
-  const { getPaymentGatewayAppId } = await import('@/lib/payment-gateway/client')
-  const notifyUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/recharge/notify`
-  const appId = getPaymentGatewayAppId() // 如果配置了 APP_ID，则传递
+  const appId = getPaymentGatewayAppId()
 
   let gatewayResponse
   try {
@@ -55,47 +251,38 @@ export async function createRechargeOrderService(
       payProvider,
       payMethod,
       title: `账户充值 - ¥${amount}`,
-      notifyUrl,
-      appId, // 如果配置了，则传递 app_id
-      // 注意：appRefId 应该由支付网关服务端从 app 字段自动关联获取，不需要客户端传递
-      meta: null, // 明确设置为 null，避免类型错误
+      notifyUrl: notifyUrl(),
+      appId,
+      meta: null,
     })
   } catch (error) {
     console.error('调用支付网关创建订单失败:', {
       bizOrderNo,
       amount,
       payProvider,
-      notifyUrl,
       error: error instanceof Error ? error.message : String(error),
     })
     throw new Error(`创建支付订单失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 
   const qrcodeUrl = gatewayResponse.qrcode_url || ''
-  const payUrl = gatewayResponse.pay_url || ''
-
-  if (payProvider === 'STRIPE' && !payUrl) {
-    throw new Error('支付网关未返回 Stripe 支付链接')
-  }
-  if (payProvider !== 'STRIPE' && !qrcodeUrl) {
+  if (!qrcodeUrl) {
     throw new Error('支付网关未返回支付二维码')
   }
 
-  // 保存订单到数据库（Stripe 将 pay_url 存入 qrcode_url 便于排查，前端以 payUrl 跳转）
   const order = await createRechargeOrder({
     userId,
     bizOrderNo,
     amount: new Prisma.Decimal(amount),
     payProvider,
-    qrcodeUrl: payProvider === 'STRIPE' ? payUrl : qrcodeUrl || null,
+    qrcodeUrl,
     gatewayOrderNo: gatewayResponse.gateway_order_no || null,
   })
 
   return {
     orderId: order.id,
     bizOrderNo: order.bizOrderNo,
-    qrcodeUrl: payProvider === 'STRIPE' ? '' : qrcodeUrl,
-    payUrl: payProvider === 'STRIPE' ? payUrl : undefined,
+    qrcodeUrl,
     amount,
     payProvider,
   }
@@ -109,10 +296,27 @@ async function processPaymentSuccess(
   orderId: string,
   gatewayOrderNo?: string
 ): Promise<void> {
+  let dingtalkPayload: {
+    bizOrderNo: string
+    payProvider: string
+    payAmount: number
+    creditAmountCny: number
+    userPhone: string | null
+    gatewayOrderNo: string | null
+  } | null = null
+
   await prisma.$transaction(async (tx) => {
-    // 幂等检查（防止 notify 和轮询并发重复处理）
-    const latestOrder = await tx.rechargeOrder.findUnique({ where: { id: orderId } })
+    const latestOrder = await tx.rechargeOrder.findUnique({
+      where: { id: orderId },
+      include: { user: { select: { phone: true } } },
+    })
     if (!latestOrder || latestOrder.processed) return
+
+    const payAmount = Number(latestOrder.amount)
+    const creditAmount =
+      latestOrder.payProvider === 'STRIPE'
+        ? new Prisma.Decimal(stripeUsdToCreditCny(payAmount))
+        : latestOrder.amount
 
     await tx.rechargeOrder.update({
       where: { id: orderId },
@@ -136,17 +340,22 @@ async function processPaymentSuccess(
     await tx.userBalance.update({
       where: { userId: latestOrder.userId },
       data: {
-        balance: { increment: latestOrder.amount },
+        balance: { increment: creditAmount },
         updatedAt: new Date(),
       },
     })
 
+    const description =
+      latestOrder.payProvider === 'STRIPE'
+        ? `充值订单 ${latestOrder.bizOrderNo} ($${payAmount} → ¥${creditAmount})`
+        : `充值订单 ${latestOrder.bizOrderNo}`
+
     await tx.transaction.create({
       data: {
         userId: latestOrder.userId,
-        amount: latestOrder.amount,
+        amount: creditAmount,
         type: 'recharge',
-        description: `充值订单 ${latestOrder.bizOrderNo}`,
+        description,
       },
     })
 
@@ -158,14 +367,27 @@ async function processPaymentSuccess(
       )
     `
 
-    // 邀请奖励：被邀请人首次充值时，给邀请人加余额（仅发一次）
     await grantInviteRechargeReward(latestOrder.userId, tx)
+
+    dingtalkPayload = {
+      bizOrderNo: latestOrder.bizOrderNo,
+      payProvider: latestOrder.payProvider,
+      payAmount,
+      creditAmountCny: Number(creditAmount),
+      userPhone: latestOrder.user.phone,
+      gatewayOrderNo: gatewayOrderNo ?? latestOrder.gatewayOrderNo,
+    }
   })
+
+  if (dingtalkPayload) {
+    notifyRechargeSuccess(dingtalkPayload).catch((err) => {
+      console.error('发送钉钉充值到账通知失败:', err)
+    })
+  }
 }
 
 /**
  * 主动查询支付状态（前端轮询使用）
- * 调用支付网关 API 获取最新状态，如果已支付则执行入账逻辑
  */
 export async function checkPaymentStatusService(
   orderId: string
@@ -175,7 +397,6 @@ export async function checkPaymentStatusService(
     throw new Error('订单不存在')
   }
 
-  // 已终态，直接返回
   if (order.status === 'paid') {
     return { status: 'paid', paid: true }
   }
@@ -183,23 +404,19 @@ export async function checkPaymentStatusService(
     return { status: order.status, paid: false }
   }
 
-  // 没有网关订单号，无法查询（订单刚创建，稍后重试）
   if (!order.gatewayOrderNo) {
     return { status: 'pending', paid: false }
   }
 
-  // 主动向支付网关查询
   const client = getPaymentGatewayClient()
   let gatewayResult: any
   try {
     gatewayResult = await client.queryPayOrder(order.gatewayOrderNo)
   } catch (error) {
     console.error('主动查询支付网关失败:', error)
-    // 查询失败不影响前端继续轮询，返回当前本地状态
     return { status: 'pending', paid: false }
   }
 
-  // 网关返回的 status 字段（兼容直接字段或 data 包裹两种结构）
   const gatewayStatus: string =
     gatewayResult?.status ?? gatewayResult?.data?.status ?? ''
 
@@ -226,7 +443,6 @@ export async function handlePaymentNotify(
   notifyData: PaymentNotifyData
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    // 1. 验证签名
     const apiSecret = process.env.PAYMENT_GATEWAY_API_SECRET
     if (!apiSecret) {
       return { ok: false, error: '支付网关配置缺失' }
@@ -237,9 +453,7 @@ export async function handlePaymentNotify(
       return { ok: false, error: '缺少签名' }
     }
 
-    // 提取签名外的数据
-    const dataWithoutSign = { ...notifyData }
-    delete dataWithoutSign.sign
+    const { sign: _receivedSignField, ...dataWithoutSign } = notifyData
 
     try {
       verifyNotifySign(apiSecret, dataWithoutSign, receivedSign)
@@ -247,7 +461,6 @@ export async function handlePaymentNotify(
       return { ok: false, error: `签名验证失败: ${error instanceof Error ? error.message : 'unknown'}` }
     }
 
-    // 2. 查找订单
     const { biz_order_no, gateway_order_no, status, amount } = notifyData
     const order = await findRechargeOrderByBizOrderNo(biz_order_no)
 
@@ -255,37 +468,31 @@ export async function handlePaymentNotify(
       return { ok: false, error: '订单不存在' }
     }
 
-    // 3. 幂等检查
     if (order.processed) {
-      // 已处理，直接返回成功（幂等）
       return { ok: true }
     }
 
-    // 4. 验证订单状态和金额
     if (order.status !== 'pending') {
       return { ok: false, error: `订单状态异常: ${order.status}` }
     }
 
     const orderAmount = Number(order.amount)
     if (Math.abs(orderAmount - amount) > 0.01) {
-      // 允许 0.01 的误差（浮点数精度问题）
       return { ok: false, error: `订单金额不匹配: 期望 ${orderAmount}, 实际 ${amount}` }
     }
 
-    // 5. 处理支付成功
     if (status === 'SUCCESS') {
       await processPaymentSuccess(order.id, gateway_order_no)
       return { ok: true }
-    } else {
-      // 支付失败或其他状态，只更新订单状态
-      await updateRechargeOrderStatus(order.id, {
-        status: status === 'FAILED' ? 'failed' : 'canceled',
-        processed: true,
-        gatewayOrderNo: gateway_order_no,
-      })
-
-      return { ok: true, error: `支付状态: ${status}` }
     }
+
+    await updateRechargeOrderStatus(order.id, {
+      status: status === 'FAILED' ? 'failed' : 'canceled',
+      processed: true,
+      gatewayOrderNo: gateway_order_no,
+    })
+
+    return { ok: true, error: `支付状态: ${status}` }
   } catch (error) {
     console.error('处理支付通知异常:', error)
     return {

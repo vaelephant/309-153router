@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 import { LOCALES, type Locale } from '@/lib/i18n'
 
-const SITE_URL = 'https://optrouter.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://optrouter.com'
 
 export function HreflangLinks() {
   const pathname = usePathname()

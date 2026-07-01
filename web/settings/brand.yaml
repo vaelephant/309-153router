@@ -1,0 +1,87 @@
+# OptRouter 品牌与对外文案 — 唯一配置源
+#
+# 修改本文件 → 同步 title / OG / metadata / JSON-LD / Agent 站点摘要
+# 读取：lib/load-brand.ts → lib/seo.ts → agent-site.ts
+
+brand:
+  name: OptRouter
+  shortName: OptRouter
+  ogTagline: Unified AI Model API Gateway
+  twitter: "@OptRouter"
+  themeColor: "#1a1a2e"
+
+productCore:
+  positioning: 一个 API，接入全球主流大模型
+  pillars: 更低成本 | 更高稳定性 | 更少接入负担
+  capabilities:
+    - 约 30 秒接入
+    - OpenAI 兼容
+    - 智能路由 · 自动容灾
+    - 多模型 Fallback
+    - 用量与成本分析
+    - 统一 API 密钥管理
+
+seo:
+  descriptionSuffix: 兼容 OpenAI API，统一接入 OpenAI、Claude、Gemini、DeepSeek 等；智能路由与自动故障转移，帮助团队降低 LLM 接入与运维成本。
+  keywords:
+    - OptRouter
+    - AI API
+    - AI 模型
+    - OpenAI API
+    - Claude API
+    - Gemini API
+    - DeepSeek API
+    - AI 路由
+    - 智能路由
+    - AI 网关
+    - LLM API
+    - 大模型 API
+    - OpenAI 兼容
+    - 多模型路由
+    - API 聚合
+
+og:
+  shortDescriptionFontSize: 22
+  blog:
+    title: 新闻资讯 · AI 网关与模型路由实践
+    description: 关于 AI 网关、多模型路由、成本优化与开发者实践的深度内容。
+  register:
+    title: 注册 OptRouter
+    description: 免费注册，一个 API 接入全球主流大模型，OpenAI 兼容，按量付费。
+  invite:
+    title: OptRouter 推广计划
+    description: 邀请好友注册，共享 AI API 网关红利。
+
+jsonLd:
+  offerDescription: 免费注册，按量付费
+
+# Agent / LLM 可读站点 — /agents /agents.json /llms.txt
+agents:
+  purpose: 本页供 AI Agent、LLM 爬虫与自动化工具快速理解 OptRouter 产品与本站结构。
+  oneLiner: OpenAI 兼容的统一 AI 模型 API 网关，多模型智能路由、Fallback 与成本分析，帮助团队降低 LLM 接入与运维成本。
+  targetAudience: 开发者、AI 应用团队、技术负责人，以及需要评估 API 网关方案的 AI Agent
+  contactAction: 访问首页 /zh 了解产品，或注册 /zh/register 开始使用
+  license: 引用本站内容请注明出处 OptRouter 与原始链接。
+  editions: []
+  siteLinks:
+    - path: /zh
+      title: 营销首页
+      description: 产品能力、定价、集成示例与客户案例
+    - path: /zh/blog
+      title: 新闻资讯
+      description: AI 网关、模型路由与开发者实践文章
+    - path: /zh/login
+      title: 登录
+      description: 用户登录控制台
+    - path: /zh/register
+      title: 注册
+      description: 免费注册 OptRouter 账号
+    - path: /agents
+      title: Agent 首页
+      description: 结构化 HTML 站点摘要，便于 AI 理解
+    - path: /agents.json
+      title: Agent JSON
+      description: 机器可读 JSON，Agent 集成主入口
+    - path: /llms.txt
+      title: llms.txt
+      description: 纯文本发现入口，遵循 llmstxt.org 约定

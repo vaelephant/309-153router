@@ -1,104 +1,78 @@
-import type { Metadata } from "next"
-import { notFound } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
-import { Navbar } from "../../(home)/components/navbar"
-import { Footer } from "@/components/footer"
-import { MarkdownContent } from "@/components/markdown-content"
-import { getNewsItem, getAllNews } from "@/lib/news"
-import { BlogArticleContent } from "./blog-article-content"
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+
+import { Navbar } from '../../(home)/components/navbar'
+import { Footer } from '@/components/footer'
+import { BlogArticleBody, BlogNewsCard } from '@/components/blog/blog-news'
+import {
+  getBlogArticle,
+  getAllBlogSlugs,
+  buildBlogMetadata,
+  buildBlogArticleJsonLd,
+  buildBlogFaqJsonLd,
+  getRelatedArticles,
+} from '@/lib/news'
+import '@/styles/news-prose.css'
 
 type Props = { params: Promise<{ locale: string; slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
-  const news = await getNewsItem(slug)
-  if (!news) return { title: "文章未找到" }
-  return {
-    title: news.title,
-    description: news.excerpt || undefined,
-    openGraph: news.coverImage ? { images: [news.coverImage] } : undefined,
-  }
+  const { slug, locale } = await params
+  const article = await getBlogArticle(slug)
+  if (!article) return { title: '文章未找到' }
+  return buildBlogMetadata(article, locale)
 }
 
-export const dynamic = "force-dynamic"
+export const dynamic = 'force-dynamic'
 
 export async function generateStaticParams() {
-  const news = await getAllNews()
-  return news.map((item) => ({ slug: item.slug }))
+  const slugs = getAllBlogSlugs()
+  return slugs.map((slug) => ({ slug }))
 }
 
 export default async function BlogSlugPage({ params }: Props) {
   const { locale, slug } = await params
-  const news = await getNewsItem(slug)
-  if (!news) notFound()
+  const article = await getBlogArticle(slug)
+  if (!article) notFound()
+
+  const related = await getRelatedArticles(article.slug, article.category, 3)
+  const articleJsonLd = buildBlogArticleJsonLd(article, locale)
+  const faqJsonLd = buildBlogFaqJsonLd(article)
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: "var(--color-bg-page)" }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--color-bg-page)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
       <Navbar />
       <div className="pt-24 pb-16">
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="mb-6">
-            <Link
-              href={`/${locale}/blog`}
-              className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
-              style={{ color: "var(--color-text-body)" }}
-            >
-              ← <BlogArticleContent type="backLabel" />
-            </Link>
-          </div>
+        <div className="mx-auto max-w-6xl px-6">
+          <BlogArticleBody article={article} locale={locale} />
 
-          <article
-            className="rounded-2xl overflow-hidden border"
-            style={{
-              borderColor: "var(--color-border-default)",
-              backgroundColor: "var(--color-bg-surface)",
-            }}
-          >
-            {news.coverImage && (
-              <div className="relative w-full h-64 md:h-96">
-                <Image
-                  src={news.coverImage.startsWith("/") ? news.coverImage : `/${news.coverImage}`}
-                  alt={news.title}
-                  fill
-                  className="object-cover"
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 896px"
-                  unoptimized={news.coverImage === "/news-image.png"}
-                />
+          {related.length > 0 && (
+            <section className="max-w-6xl mx-auto mt-24 space-y-8">
+              <div className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-brand)' }}>
+                  Related
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
+                  相关阅读
+                </h2>
               </div>
-            )}
-
-            <div className="p-6 md:p-10">
-              <BlogArticleContent type="meta" date={news.date} locale={locale} />
-              <h1
-                className="text-3xl md:text-5xl font-bold mb-6 leading-tight"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {news.title}
-              </h1>
-              {news.tags && news.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {news.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium"
-                      style={{
-                        border: "1px solid var(--color-border-default)",
-                        backgroundColor: "var(--color-bg-page)",
-                        color: "var(--color-brand)",
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {news.content && (
-                <MarkdownContent content={news.content} />
-              )}
-            </div>
-          </article>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {related.map((a) => (
+                  <BlogNewsCard key={a.slug} article={a} locale={locale} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
       <Footer />
