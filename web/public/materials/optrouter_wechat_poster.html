@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptRouter 朋友圈电子物料</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --blue: #2f7df4;
+      --blue-soft: #eaf3ff;
+      --text: #101828;
+      --muted: #475467;
+      --line: #e5e7eb;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #edf1f6;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    .stage {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 48px;
+    }
+
+    .poster {
+      position: relative;
+      width: 393px;
+      /* 朋友圈海报用固定 9:16 高度，避免底部被浏览器窗口截掉 */
+      min-height: 698px;
+      overflow: visible;
+      padding: 23px 25px 22px;
+      background:
+        radial-gradient(circle at 72% 17%, rgba(47, 125, 244, 0.10), transparent 28%),
+        radial-gradient(circle at 14% 86%, rgba(47, 125, 244, 0.07), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcfe 54%, #f6f9fd 100%);
+      border: 1px solid #e7ebf1;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.10);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 34px;
+      margin-bottom: 38px;
+    }
+
+    .brand {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.55px;
+      color: var(--text);
+    }
+
+    .trial-btn {
+      height: 34px;
+      padding: 0 19px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #2f7df4, #2f89ff);
+      box-shadow: 0 10px 24px rgba(47, 125, 244, 0.24);
+      white-space: nowrap;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 2;
+      height: 238px;
+    }
+
+    .headline {
+      position: relative;
+      z-index: 2;
+      width: 215px;
+      margin: 0;
+      font-size: 42px;
+      line-height: 1.12;
+      letter-spacing: -2px;
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .headline .blue {
+      display: block;
+      color: var(--blue);
+    }
+
+    .desc {
+      position: relative;
+      z-index: 2;
+      width: 210px;
+      margin: 20px 0 0;
+      color: #344054;
+      font-size: 16px;
+      line-height: 1.55;
+      letter-spacing: -0.15px;
+      font-weight: 500;
+    }
+
+    .desc .accent {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .glass-visual {
+      position: absolute;
+      z-index: 1;
+      top: 60px;
+      right: -3px;
+      width: 158px;
+      height: 170px;
+      filter: drop-shadow(0 24px 34px rgba(45, 104, 199, 0.16));
+    }
+
+    .glass-card {
+      position: absolute;
+      left: 47px;
+      top: 0;
+      width: 88px;
+      height: 88px;
+      border-radius: 23px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(212, 228, 252, 0.60));
+      border: 1px solid rgba(255, 255, 255, 0.98);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 16px 34px rgba(59, 130, 246, 0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      background-image: url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 42 L36 22 L51 43'/%3E%3Ccircle cx='22' cy='42' r='7'/%3E%3Ccircle cx='36' cy='22' r='7'/%3E%3Ccircle cx='51' cy='43' r='7'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.98;
+      filter: drop-shadow(0 4px 6px rgba(37, 99, 235, 0.16));
+    }
+
+    .layer {
+      position: absolute;
+      left: 18px;
+      width: 123px;
+      height: 66px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(255, 255, 255, 0.97);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.90), 0 14px 28px rgba(37, 99, 235, 0.10);
+      transform: skewY(-8deg) rotate(-1deg);
+    }
+
+    .layer.one {
+      top: 78px;
+    }
+
+    .layer.two {
+      top: 100px;
+      background: rgba(221, 234, 255, 0.76);
+    }
+
+    .layer.three {
+      top: 121px;
+      background: linear-gradient(140deg, rgba(255, 255, 255, 0.72), rgba(47, 125, 244, 0.25));
+    }
+
+    .chips-wrap {
+      position: relative;
+      width: calc(100% + 6px);
+      margin-left: -3px;
+      overflow: hidden;
+    }
+
+    .chips {
+      display: flex;
+      gap: 10px;
+      margin: 11px 0 21px;
+      white-space: nowrap;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      height: 28px;
+      padding: 0 14px;
+      border: 1px solid #dbe1ea;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.72);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.025);
+    }
+
+    .chip.more {
+      width: 38px;
+      padding: 0;
+      color: #98a2b3;
+      font-weight: 900;
+    }
+
+    .benefits {
+      padding: 17px 24px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.92);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+      backdrop-filter: blur(14px);
+    }
+
+    .benefit-row {
+      display: grid;
+      grid-template-columns: 51px 1px 1fr;
+      align-items: center;
+      gap: 18px;
+      min-height: 61px;
+    }
+
+    .benefit-row + .benefit-row {
+      border-top: 1px solid var(--line);
+    }
+
+    .icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--blue-soft);
+    }
+
+    .separator {
+      height: 18px;
+      width: 1px;
+      background: #e4e7ec;
+    }
+
+    .benefit-text {
+      color: var(--text);
+      font-size: 15.5px;
+      line-height: 1.35;
+      font-weight: 800;
+      letter-spacing: -0.25px;
+    }
+
+    .icon {
+      width: 27px;
+      height: 27px;
+    }
+
+    .cta {
+      margin-top: 17px;
+      min-height: 93px;
+      padding: 14px 17px;
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 17px;
+      align-items: center;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.88);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.055);
+    }
+
+    .qr {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      border: 1.7px solid var(--blue);
+      background: #fff;
+    }
+
+    .cta-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.12;
+      font-weight: 900;
+      letter-spacing: -0.7px;
+    }
+
+    .cta-title span {
+      color: var(--blue);
+    }
+
+    .mini-line {
+      width: 24px;
+      height: 3px;
+      margin: 8px 0 8px;
+      border-radius: 999px;
+      background: var(--blue);
+      position: relative;
+    }
+
+    .mini-line::after {
+      content: "";
+      position: absolute;
+      right: -10px;
+      top: 0;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--blue);
+      opacity: 0.65;
+    }
+
+    .cta-sub {
+      margin: 0;
+      color: #667085;
+      font-size: 14px;
+      line-height: 1.2;
+      font-weight: 500;
+    }
+
+    @media (max-width: 430px) {
+      .stage {
+        padding: 0 0 40px;
+      }
+
+      .poster {
+        width: 100vw;
+        min-height: calc(100vw * 16 / 9);
+        border: none;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <main class="poster">
+      <header class="topbar">
+        <div class="brand">OptRouter</div>
+        <div class="trial-btn">免费试用</div>
+      </header>
+
+      <section class="hero">
+        <h1 class="headline">
+          一个接口，<br />
+          稳定接入<br />
+          <span class="blue">多个大模型</span>
+        </h1>
+
+        <div class="glass-visual" aria-hidden="true">
+          <div class="glass-card"></div>
+          <div class="layer one"></div>
+          <div class="layer two"></div>
+          <div class="layer three"></div>
+        </div>
+
+        <p class="desc">
+          兼容 <span class="accent">OpenAI API</span>，<br />
+          统一调用 OpenAI、Claude、<br />
+          Gemini、DeepSeek 等模型
+        </p>
+      </section>
+
+      <section class="chips-wrap" aria-label="模型名称">
+        <div class="chips">
+          <span class="chip">OpenAI</span>
+          <span class="chip">Claude</span>
+          <span class="chip">Gemini</span>
+          <span class="chip">DeepSeek</span>
+          <span class="chip more">···</span>
+        </div>
+      </section>
+
+      <section class="benefits">
+        <div class="benefit-row">
+          <div class="icon-wrap">
+            <svg class="icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="7" y="11" width="24" height="26" rx="5" fill="#2F7DF4"/>
+              <path d="M16 29h-4l4-11h4l4 11h-4l-.7-2.2h-2.6L16 29Zm1.3-5.2h1.4L18 21.3l-.7 2.5ZM26 18v11" stroke="white" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M34 17c2.7 1.4 4.5 4.2 4.5 7.5S36.7 30.6 34 32M38 13c3.9 2.3 6.5 6.6 6.5 11.5S41.9 33.7 38 36" stroke="#2F7DF4" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="separator"></div>
+          <div class="benefit-text">统一接入，降低开发成本</div>
+        </div>
+
+        <div class="benefit-row">
+          <div class="icon-wrap">
+            <svg class="icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 5 39 11v11c0 9.7-6.2 17.8-15 20-8.8-2.2-15-10.3-15-20V11l15-6Z" stroke="#2F7DF4" stroke-width="3.5" stroke-linejoin="round"/>
+              <path d="M25.5 14 18 25h6l-1.5 9L31 22h-6l.5-8Z" fill="#2F7DF4"/>
+            </svg>
+          </div>
+          <div class="separator"></div>
+          <div class="benefit-text">自动故障切换，提升稳定性</div>
+        </div>
+
+        <div class="benefit-row">
+          <div class="icon-wrap">
+            <svg class="icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="28" width="7" height="12" rx="2" fill="#2F7DF4" opacity="0.45"/>
+              <rect x="20.5" y="21" width="7" height="19" rx="2" fill="#2F7DF4" opacity="0.68"/>
+              <rect x="33" y="14" width="7" height="26" rx="2" fill="#2F7DF4"/>
+              <path d="M9 21c8.8-2.1 15.9-6.3 22-13" stroke="#2F7DF4" stroke-width="3" stroke-linecap="round"/>
+              <path d="M31 8h8v8" stroke="#2F7DF4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="separator"></div>
+          <div class="benefit-text">智能路由，优化调用成本</div>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="qr"></div>
+        <div>
+          <p class="cta-title">扫码了解 <span>OptRouter</span></p>
+          <div class="mini-line"></div>
+          <p class="cta-sub">免费试用 / 预约演示</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

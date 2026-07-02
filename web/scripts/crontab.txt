@@ -5,7 +5,12 @@
 # 2. 复制下面的配置（根据实际情况修改路径）
 # 3. 保存并退出
 
-# 每天早上 9 点运行统计报告脚本
+# ── 新闻资讯：每天早上 7 点自动生成一篇文章 ──
+# 先 chmod +x scripts/daily-news-cron.sh
+# 日志默认写入 web/logs/news-cron.log
+# 0 7 * * * /path/to/your/project/web/scripts/daily-news-cron.sh
+
+# ── 网站访问统计：每天早上 9 点 ──
 # 注意：请将 /path/to/your/project/web 替换为实际的 web 目录路径
 0 9 * * * cd /path/to/your/project/web && /usr/bin/python3 scripts/webanalytics.py >> /var/log/webanalytics.log 2>&1
 

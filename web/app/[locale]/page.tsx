@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Navbar } from './(home)/components/navbar'
 import { Hero } from './(home)/components/hero'
+import { HomeNewsSection } from './(home)/components/home-news-section'
 import { HomeDeferredSections } from './(home)/components/home-deferred-sections'
 import zhMessages from '@/messages/zh.json'
 import enMessages from '@/messages/en.json'
@@ -34,6 +35,7 @@ export default async function HomePage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Navbar />
       <Hero />
+      <HomeNewsSection locale={locale} />
       <HomeDeferredSections />
     </main>
   )

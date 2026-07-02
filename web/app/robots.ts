@@ -1,13 +1,25 @@
 import type { MetadataRoute } from 'next'
 
-const SITE_URL = 'https://optrouter.com'
+import { getSiteUrl } from '@/lib/site-url'
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getSiteUrl()
   return {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/promo', '/login', '/register'],
+        allow: [
+          '/',
+          '/agents',
+          '/agents.json',
+          '/llms.txt',
+          '/zh/blog',
+          '/en/blog',
+          '/ja/blog',
+          '/zh/promo',
+          '/zh/login',
+          '/zh/register',
+        ],
         disallow: [
           '/dashboard',
           '/admin',
@@ -22,6 +34,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
   }
 }

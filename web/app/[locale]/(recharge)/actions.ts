@@ -2,6 +2,7 @@
 
 import { createRechargeOrderService } from './domain/recharge.service'
 import { createRechargeOrderSchema } from './domain/recharge.schema'
+import { RechargeError } from './domain/recharge.errors'
 import type { ActionResult } from '@/lib/actions/types'
 import type { CreateRechargeOrderResult, PayProvider } from './domain/recharge.types'
 
@@ -9,7 +10,7 @@ import type { CreateRechargeOrderResult, PayProvider } from './domain/recharge.t
  * 创建充值订单 Server Action
  */
 export async function createRechargeOrderAction(
-  _: ActionResult,
+  _: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult<CreateRechargeOrderResult>> {
   try {
@@ -35,16 +36,22 @@ export async function createRechargeOrderAction(
       }
     }
 
+    const locale = (formData.get('locale') as string) || undefined
+
     // 调用 Domain Service
     const result = await createRechargeOrderService({
       userId,
       amount: validation.data.amount,
       payProvider: validation.data.payProvider,
+      locale,
     })
 
     return { ok: true, data: result }
   } catch (error) {
     console.error('创建充值订单失败:', error)
+    if (error instanceof RechargeError) {
+      return { ok: false, error: error.message, code: error.code }
+    }
     return {
       ok: false,
       error: error instanceof Error ? error.message : '创建充值订单失败',

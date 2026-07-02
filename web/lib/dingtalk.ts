@@ -1,10 +1,10 @@
 /**
- * 钉钉 Webhook 通知模块
+ * 钉钉 Webhook — 注册 / 登录通知（充值见 lib/recharge/dingtalk.ts）
  *
  * 环境变量：
  *   DINGTALK_ENABLED      — "true" 或 "1" 开启
  *   DINGTALK_WEBHOOK_URL  — 钉钉自定义机器人 Webhook 地址
- *   DINGTALK_SECRET       — 加签密钥（可选，如果机器人开启了加签安全设置）
+ *   DINGTALK_SECRET       — 加签密钥（可选）
  */
 
 import crypto from "crypto"

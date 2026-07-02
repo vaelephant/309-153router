@@ -28,6 +28,27 @@ export interface CreatePayOrderResponse {
   pay_params?: Record<string, any>
 }
 
+export interface BillingChargeResponse {
+  status: 'succeeded' | 'requires_action'
+  gateway_order_no: string
+  payment_intent_id?: string
+  client_secret?: string
+  biz_order_no: string
+  amount?: number
+  currency?: string
+}
+
+export class PaymentGatewayError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly httpStatus?: number
+  ) {
+    super(message)
+    this.name = 'PaymentGatewayError'
+  }
+}
+
 export class PaymentGatewayClient {
   private baseUrl: string
   private apiKey: string
@@ -178,6 +199,121 @@ export class PaymentGatewayClient {
         console.error('支付网关请求配置错误:', error.message)
         throw new Error(`支付网关请求配置错误: ${error.message}`)
       }
+    }
+  }
+
+  /**
+   * 创建/获取 Billing Customer（幂等）
+   */
+  async createBillingCustomer(params: {
+    bizUserId: string
+    email?: string
+    name?: string
+    appId?: string
+  }): Promise<{ customer_id: string; biz_user_id: string; created: boolean }> {
+    const requestData: Record<string, unknown> = {
+      biz_user_id: params.bizUserId,
+    }
+    if (params.email) requestData.email = params.email
+    if (params.name) requestData.name = params.name
+    if (params.appId) requestData.app_id = params.appId
+
+    return this.postBilling('/billing/customers', requestData)
+  }
+
+  /**
+   * 创建 SetupIntent（绑卡）
+   */
+  async createSetupIntent(params: {
+    bizUserId: string
+    usage?: string
+    email?: string
+    name?: string
+    appId?: string
+  }): Promise<{
+    setup_intent_id: string
+    client_secret: string
+    customer_id: string
+  }> {
+    const requestData: Record<string, unknown> = {
+      biz_user_id: params.bizUserId,
+      usage: params.usage ?? 'off_session',
+    }
+    if (params.email) requestData.email = params.email
+    if (params.name) requestData.name = params.name
+    if (params.appId) requestData.app_id = params.appId
+
+    return this.postBilling('/billing/setup-intents', requestData)
+  }
+
+  /**
+   * 列出用户支付方式
+   */
+  async listPaymentMethods(bizUserId: string): Promise<{
+    customer_id: string
+    items: Array<{
+      payment_method_id: string
+      brand?: string | null
+      last4?: string | null
+      exp_month?: number | null
+      exp_year?: number | null
+      is_default?: boolean
+    }>
+  }> {
+    const query = `biz_user_id=${encodeURIComponent(bizUserId)}`
+    const url = `${this.baseUrl}/billing/payment-methods?${query}`
+    const requestBody = ''
+    const headers = this.generateHeaders(requestBody)
+    const response = await this.httpClient.get(url, { headers })
+    return response.data
+  }
+
+  /**
+   * 已绑卡直扣充值（P1.5）
+   */
+  async createBillingCharge(params: {
+    bizUserId: string
+    bizOrderNo: string
+    amount: number
+    currency?: string
+    paymentMethodId?: string
+    idempotencyKey?: string
+    notifyUrl: string
+    title?: string
+    appId?: string
+  }): Promise<BillingChargeResponse> {
+    const requestData: Record<string, unknown> = {
+      biz_user_id: params.bizUserId,
+      biz_order_no: params.bizOrderNo,
+      amount: params.amount,
+      currency: params.currency ?? 'CNY',
+      notify_url: params.notifyUrl,
+    }
+    if (params.paymentMethodId) requestData.payment_method_id = params.paymentMethodId
+    if (params.idempotencyKey) requestData.idempotency_key = params.idempotencyKey
+    if (params.title) requestData.title = params.title
+    if (params.appId) requestData.app_id = params.appId
+
+    return this.postBilling('/billing/charges', requestData)
+  }
+
+  private async postBilling<T>(path: string, requestData: Record<string, unknown>): Promise<T> {
+    const url = `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+    const requestBody = JSON.stringify(requestData)
+    const headers = this.generateHeaders(requestBody)
+    try {
+      const response = await this.httpClient.post<T>(url, requestBody, { headers })
+      return response.data
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const data = error.response.data as { code?: string; message?: string; detail?: string }
+        throw new PaymentGatewayError(
+          data.message || data.detail || 'Billing 请求失败',
+          data.code,
+          error.response.status
+        )
+      }
+      throw error
     }
   }
 
